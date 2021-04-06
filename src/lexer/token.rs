@@ -2,7 +2,8 @@ pub struct Token(LocationData, TokenType);
 
 struct LocationData {
     line_num: usize,
-    line_pos: usize,
+    tok_begin: usize,
+    tok_end: usize
 }
 
 enum TokenType {
