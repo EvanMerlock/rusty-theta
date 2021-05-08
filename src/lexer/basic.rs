@@ -150,11 +150,7 @@ impl<'a> Lexer for BasicLexer<'a> {
     fn scan_token(&mut self) -> Option<token::Token> {
         match self.advance() {
             None => { 
-                if self.comment_level > 0 {
-                    panic!("Lexer error: multi-level comments not completed.")
-                } else {
-                    Some(self.generate_token(token::TokenType::EOF))
-                }
+                Some(self.generate_token(token::TokenType::EOF))
             },
 
             Some(' ') | Some('\r') | Some('\t') => None,
@@ -163,7 +159,14 @@ impl<'a> Lexer for BasicLexer<'a> {
                 None
             },
 
+            Some('*') if self.comment_level > 0 => {
+                if self.match_char('/') {
+                    self.dec_comment_level();
+                }
+                None
+            },
             Some(_) if self.comment_level > 0 => None,
+
             Some('(') => Some(self.generate_token(token::TokenType::LeftParen)),
             Some(')') => Some(self.generate_token(token::TokenType::RightParen)),
             Some('[') => Some(self.generate_token(token::TokenType::LeftBrace)),
@@ -175,16 +178,7 @@ impl<'a> Lexer for BasicLexer<'a> {
             Some('+') => Some(self.generate_token(token::TokenType::Plus)),
             Some(';') => Some(self.generate_token(token::TokenType::Semicolon)),
             Some(':') => Some(self.generate_token(token::TokenType::Colon)),
-            Some('*') => {
-                if self.comment_level == 0 {
-                    Some(self.generate_token(token::TokenType::Star))
-                } else {
-                    if self.match_char('/') {
-                        self.dec_comment_level()
-                    }
-                    None
-                }
-            },
+            Some('*') => Some(self.generate_token(token::TokenType::Star)),
 
             Some('-') => {
                 if self.match_char('>') {
