@@ -1,0 +1,44 @@
+( ) [ ] , . - + ; / * : ->
+
+! !=
+= ==
+> >=
+< <=
+
+"This is a string"
+Identifier
+10
+10.5
+
+and class else false fun for if or
+return super this true let while
+
+// this is a line comment
+
+/*
+    this is a block comment
+    nothing should enter the token stream from here
+
+    ( ) [ ] , . - + ; / * : ->
+
+    ! !=
+    = ==
+    > >=
+    < <=
+
+    "This is a string"
+    Identifier
+    10
+    10.5
+
+    and class else false fun for if or
+    return super this true let while
+*/
+
+"This is a string after the block comment"
+
+"this is a multi-line string
+
+end of the multi-line string"
+
+identifier

@@ -36,6 +36,10 @@ impl Token {
             typ
         )
     }
+
+    pub fn line_num(&self) -> usize {
+        return self.0.line_num
+    }
 }
 
 #[derive(PartialEq, Debug)]
