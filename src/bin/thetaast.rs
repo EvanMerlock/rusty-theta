@@ -1,6 +1,7 @@
 use clap::{AppSettings, Clap};
 use utf8_chars::BufReadCharsExt;
 use theta_lang::lexer::{Lexer, BasicLexer};
+use theta_lang::parser::{Parser, BasicParser};
 use std::fs::File;
 use std::io::BufReader;
 
@@ -9,17 +10,24 @@ use std::io::BufReader;
 #[clap(setting = AppSettings::ColoredHelp)]
 struct ThetaASTOptions {
     #[clap(short, long)]
-    in_file: String,
+    in_file: Option<String>,
     #[clap(short, long)]
     out_file: Option<String>,
     #[clap(short, long, parse(from_occurrences))]
     verbose: i32,
 }
 
-fn main() -> Result<(), std::io::Error> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let options = ThetaASTOptions::parse();
 
-    let mut in_file = BufReader::new(File::open(options.in_file)?);
+    let mut in_file: Box<dyn std::io::BufRead> = 
+    {
+        if options.in_file.is_some() {
+            Box::new(BufReader::new(File::open(options.in_file.unwrap())?))
+        } else {
+            Box::new(BufReader::new(std::io::stdin()))
+        }
+    };
 
     let mut out_file: Box<dyn std::io::Write> =
     {
@@ -34,8 +42,12 @@ fn main() -> Result<(), std::io::Error> {
     let lexer = BasicLexer::new(&mut iter);
 
     let tokens = lexer.lex();
+    let mut tok_stream = tokens.into_iter();
 
-    write!(&mut out_file, "{:?}", tokens)?;
+    let parser = BasicParser::new(&mut tok_stream);
+    let expression = parser.parse()?;
+
+    write!(&mut out_file, "{:?}", expression)?;
 
     Ok(())
 }

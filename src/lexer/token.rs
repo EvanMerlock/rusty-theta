@@ -22,7 +22,7 @@ lazy_static! {
     };
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Token(LocationData, TokenType);
 
 impl Token {
@@ -40,9 +40,17 @@ impl Token {
     pub fn line_num(&self) -> usize {
         return self.0.line_num
     }
+
+    pub fn char_loc(&self) -> usize {
+        return self.0.tok_begin
+    }
+
+    pub fn ty(&self) -> TokenType {
+        self.1.clone()
+    }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 struct LocationData {
     line_num: usize,
     tok_begin: usize,
