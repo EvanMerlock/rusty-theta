@@ -164,9 +164,19 @@ impl<'a> BasicParser<'a> {
 
     fn primary(&mut self) -> Result<Expression, super::ParseError> {
         if self.match_token([TokenType::LeftParen]).is_some() {
-            let inner = self.expression();
-            self.consume(TokenType::RightParen, "Expected \')\' after expression.")?;
-            inner.map(|exp| Expression::Grouping(Box::new(exp)))
+            let mut seq_expressions = vec![];
+            let mut inner = self.expression()?;
+
+            seq_expressions.push(Box::new(inner));
+
+            while let Some(_) = self.match_token([TokenType::Semicolon]) {
+                inner = self.expression()?;
+                seq_expressions.push(Box::new(inner));
+            };
+
+            self.consume(TokenType::RightParen, "Expected ')' after expression.")?;
+            
+            Ok(Expression::Sequence(seq_expressions))
         } else {
             self.advance().map(|tk| Expression::Literal(tk)).ok_or(super::ParseError::from_other("Unexpected EOS"))
         }
