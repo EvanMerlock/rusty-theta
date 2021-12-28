@@ -1,9 +1,11 @@
-literal     : NUMBER | STRING | "true" | "false" | "nil" ;
-expression  : equality;
-equality    : comparison ( ( "!=" | "==" ) comparison )*;
-comparison  : term ( ( ">" | ">=" | "<" | "<=" ) term )*;
-term        : factor ( ( "-" | "+" ) factor )*;
-factor      : unary ( ( "/" | "*" ) unary )*;
-unary       : ( "!" | "-" ) unary
-            | primary;
-primary     : literal | "(" expression (";" expression)* ")";
+Item ::= FunDef | ModDef | ClassDef;
+
+Expression  : Equality;
+Equality    : Comparison ( ( "!=" | "==" ) Comparison )*;
+Comparison  : Term ( ( ">" | ">=" | "<" | "<=" ) Term )*;
+Term        : Factor ( ( "-" | "+" ) Factor )*;
+Factor      : Unary ( ( "/" | "*" ) Unary )*;
+Unary       : ( "!" | "-" ) Unary
+            | Primary;
+Primary     : Literal | "(" Expression (";" Expression)* ")";
+Literal     : NUMBER | STRING | TRUE | FALSE | NIL;

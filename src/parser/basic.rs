@@ -178,6 +178,7 @@ impl<'a> BasicParser<'a> {
             
             Ok(Expression::Sequence(seq_expressions))
         } else {
+            // needs to match literals only
             self.advance().map(|tk| Expression::Literal(tk)).ok_or(super::ParseError::from_other("Unexpected EOS"))
         }
     }
