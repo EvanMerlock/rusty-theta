@@ -1,10 +1,12 @@
 use clap::{AppSettings, Clap};
-use theta_lang::vm::chunk::Chunk;
-use std::{fs::File, io::BufReader};
+use theta_lang::vm::disassembler::{StringDisassembler, Disassembler};
+use std::fs::File;
+use std::io::BufReader;
+
 #[derive(Clap)]
 #[clap(version = "0.0.1", author = "Evan Merlock")]
 #[clap(setting = AppSettings::ColoredHelp)]
-struct ThetaCOptions {
+struct ThetaDOptions {
     #[clap(short, long)]
     in_file: Option<String>,
     #[clap(short, long)]
@@ -14,7 +16,7 @@ struct ThetaCOptions {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let options = ThetaCOptions::parse();
+    let options = ThetaDOptions::parse();
 
     let mut in_file: Box<dyn std::io::BufRead> = 
     {
@@ -34,10 +36,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let chunks: Vec<Chunk> = Vec::new();
+    let mut decompiler = StringDisassembler::new(in_file);
+    let chunks = decompiler.disassemble()?;
 
-    // directly use io::Write implementation here to write out chunks of data
-    // convert using assembler? or just write here in thetac?
     write!(&mut out_file, "{:?}", chunks)?;
 
     Ok(())
