@@ -26,7 +26,7 @@ lazy_static! {
 pub struct Token(LocationData, TokenType);
 
 impl Token {
-    pub fn new(line_num: usize, begin: usize, end: usize, typ: TokenType) -> Token {
+    pub const fn new(line_num: usize, begin: usize, end: usize, typ: TokenType) -> Token {
         Token (
             LocationData {
                 line_num: line_num,
@@ -77,4 +77,13 @@ pub enum TokenType {
     Return, Super, This, True, Let, While,
 
     EOF
+}
+
+impl TokenType {
+    pub fn is_literal(&self) -> bool {
+        match self {
+            Self::Identifier(_) | Self::Str(_) | Self::Integer(_) | Self::Float(_) => true,
+            _ => false,
+        }
+    }
 }

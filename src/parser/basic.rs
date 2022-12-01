@@ -4,22 +4,22 @@ use super::Parser;
 use crate::lexer::token::{Token, TokenType};
 
 pub struct BasicParser<'a> {
-    tokens: Peekable<&'a mut dyn Iterator<Item = Token>>
+    tokens: Peekable<&'a mut dyn Iterator<Item = &'a Token>>
 }
 
 impl<'a> BasicParser<'a> {
-    pub fn new(token_stream: &'a mut dyn Iterator<Item = Token>) -> BasicParser<'a> {
+    pub fn new(token_stream: &'a mut dyn Iterator<Item = &'a Token>) -> BasicParser<'a> {
         BasicParser {
             tokens: token_stream.peekable()
         }
     }
 
     fn advance(&mut self) -> Option<Token> {
-        self.tokens.next()
+        self.tokens.next().map(|x| x.clone())
     }
 
     fn peek(&mut self) -> Option<&Token> {
-        self.tokens.peek()
+        self.tokens.peek().map(|x| *x)
     }
 
     fn is_at_end(&mut self) -> bool {
@@ -179,7 +179,11 @@ impl<'a> BasicParser<'a> {
             Ok(Expression::Sequence(seq_expressions))
         } else {
             // needs to match literals only
-            self.advance().map(|tk| Expression::Literal(tk)).ok_or(super::ParseError::from_other("Unexpected EOS"))
+            self
+                .advance()
+                .filter(|tk| tk.ty().is_literal())
+                .map(|tk| Expression::Literal(tk))
+                .ok_or(super::ParseError::from_other("Unexpected EOS"))
         }
     }
 }

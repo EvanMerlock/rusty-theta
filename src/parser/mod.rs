@@ -3,6 +3,7 @@ use std::fmt;
 
 pub(crate) mod tree;
 mod basic;
+mod tests;
 
 pub use self::basic::*;
 

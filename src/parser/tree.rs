@@ -1,6 +1,6 @@
 use crate::lexer::token::Token;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct AbstractTree(Expression);
 
 impl AbstractTree {
@@ -9,7 +9,7 @@ impl AbstractTree {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     Binary {
         left: Box<Expression>,
