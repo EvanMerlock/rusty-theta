@@ -4,11 +4,11 @@ use super::Parser;
 use crate::lexer::token::{Token, TokenType};
 
 pub struct BasicParser<'a> {
-    tokens: Peekable<&'a mut dyn Iterator<Item = &'a Token>>
+    tokens: Peekable<&'a mut dyn Iterator<Item = Token>>
 }
 
 impl<'a> BasicParser<'a> {
-    pub fn new(token_stream: &'a mut dyn Iterator<Item = &'a Token>) -> BasicParser<'a> {
+    pub fn new(token_stream: &'a mut dyn Iterator<Item = Token>) -> BasicParser<'a> {
         BasicParser {
             tokens: token_stream.peekable()
         }
@@ -19,7 +19,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn peek(&mut self) -> Option<&Token> {
-        self.tokens.peek().map(|x| *x)
+        self.tokens.peek().map(|x| x)
     }
 
     fn is_at_end(&mut self) -> bool {

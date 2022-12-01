@@ -2,7 +2,7 @@
 name = "theta-lang"
 version = "0.1.0"
 authors = ["Evan Merlock <vnmrlck@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 lazy_static = "1.4.0"

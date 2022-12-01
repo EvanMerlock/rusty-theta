@@ -6,7 +6,7 @@ macro_rules! define_parse_test {
         #[test]
         fn $test_name() {
             let input = $input;
-            let mut iter = input.iter();
+            let mut iter = input.into_iter();
             {
                 let parser = BasicParser::new(&mut iter);
 

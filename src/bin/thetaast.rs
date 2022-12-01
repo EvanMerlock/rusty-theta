@@ -2,6 +2,7 @@ use clap::{AppSettings, Clap};
 use utf8_chars::BufReadCharsExt;
 use theta_lang::lexer::{Lexer, BasicLexer};
 use theta_lang::parser::{Parser, BasicParser};
+use std::borrow::Borrow;
 use std::fs::File;
 use std::io::BufReader;
 
