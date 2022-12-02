@@ -1,5 +1,5 @@
 use clap::{AppSettings, Clap};
-use theta_lang::vm::disassembler::{StringDisassembler, Disassembler};
+use theta_lang::vm::bytecode::{StringDisassembler, Disassembler};
 use std::fs::File;
 use std::io::BufReader;
 
@@ -36,10 +36,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let mut decompiler = StringDisassembler::new(in_file);
+    let mut decompiler = StringDisassembler::new(&mut in_file);
     let chunks = decompiler.disassemble()?;
 
-    write!(&mut out_file, "{:?}", chunks)?;
+    write!(&mut out_file, "{}", chunks)?;
 
     Ok(())
 }

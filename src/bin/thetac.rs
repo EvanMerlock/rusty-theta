@@ -1,6 +1,7 @@
 use clap::{AppSettings, Clap};
-use theta_lang::vm::chunk::Chunk;
+use theta_lang::vm::{chunk::{Chunk, self}, bytecode::{BasicAssembler, Assembler, PlainTextAssembler}, instruction::OpCode};
 use std::{fs::File, io::BufReader};
+use theta_lang::build_chunk;
 #[derive(Clap)]
 #[clap(version = "0.0.1", author = "Evan Merlock")]
 #[clap(setting = AppSettings::ColoredHelp)]
@@ -34,11 +35,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let chunks: Vec<Chunk> = Vec::new();
+    let mut chunks: Vec<Chunk> = Vec::new();
+    chunks.push(build_chunk!(OpCode::RETURN));
 
-    // directly use io::Write implementation here to write out chunks of data
-    // convert using assembler? or just write here in thetac?
-    write!(&mut out_file, "{:?}", chunks)?;
+    let mut assembler = BasicAssembler::new(&mut out_file);
+    assembler.assemble(chunks)?;
+
+    out_file.flush()?;
 
     Ok(())
 }

@@ -1,3 +1,4 @@
+#[macro_use]
 pub mod chunk;
 pub mod instruction;
-pub mod disassembler;
+pub mod bytecode;
