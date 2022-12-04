@@ -5,4 +5,5 @@
 #[derive(Debug)]
 pub enum OpCode {
     RETURN,
+    CONSTANT { offset: usize },
 }

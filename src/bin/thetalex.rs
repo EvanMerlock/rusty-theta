@@ -1,12 +1,11 @@
-use clap::{AppSettings, Clap};
+use clap::{Parser as ClapParser};
 use utf8_chars::BufReadCharsExt;
 use theta_lang::lexer::{Lexer, BasicLexer};
 use std::fs::File;
 use std::io::BufReader;
 
-#[derive(Clap)]
+#[derive(ClapParser)]
 #[clap(version = "0.0.1", author = "Evan Merlock")]
-#[clap(setting = AppSettings::ColoredHelp)]
 struct ThetaLexOptions {
     #[clap(short, long)]
     in_file: String,

@@ -1,11 +1,10 @@
-use clap::{AppSettings, Clap};
+use clap::{Parser as ClapParser};
 use theta_lang::vm::bytecode::{StringDisassembler, Disassembler};
 use std::fs::File;
 use std::io::BufReader;
 
-#[derive(Clap)]
+#[derive(ClapParser)]
 #[clap(version = "0.0.1", author = "Evan Merlock")]
-#[clap(setting = AppSettings::ColoredHelp)]
 struct ThetaDOptions {
     #[clap(short, long)]
     in_file: Option<String>,
