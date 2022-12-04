@@ -15,23 +15,23 @@ impl<'a> BasicParser<'a> {
     }
 
     fn advance(&mut self) -> Option<Token> {
-        self.tokens.next().map(|x| x.clone())
+        self.tokens.next()
     }
 
     fn peek(&mut self) -> Option<&Token> {
-        self.tokens.peek().map(|x| x)
+        self.tokens.peek()
     }
 
     fn is_at_end(&mut self) -> bool {
         match self.peek() {
-            Some(tok) => tok.ty() == TokenType::EOF,
+            Some(tok) => tok.ty() == TokenType::Eof,
             None => true
         }
     }
 
     fn consume(&mut self, tt: TokenType, msg: &'static str) -> Result<Token, super::ParseError> {
         if self.check(&tt) {
-            self.advance().ok_or(super::ParseError::from_other("Unexpected EOS"))
+            self.advance().ok_or_else(|| super::ParseError::from_other("Unexpected EOS"))
         } else {
             match self.peek() {
                 Some(tok) => Err(super::ParseError::from_token(tok.clone(), msg)),
@@ -88,7 +88,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn expression(&mut self) -> Result<Expression, super::ParseError> {
-        return self.equality(); 
+        self.equality() 
     }
 
     fn equality(&mut self) -> Result<Expression, super::ParseError> {
@@ -167,11 +167,11 @@ impl<'a> BasicParser<'a> {
             let mut seq_expressions = vec![];
             let mut inner = self.expression()?;
 
-            seq_expressions.push(Box::new(inner));
+            seq_expressions.push(inner);
 
-            while let Some(_) = self.match_token([TokenType::Semicolon]) {
+            while self.match_token([TokenType::Semicolon]).is_some() {
                 inner = self.expression()?;
-                seq_expressions.push(Box::new(inner));
+                seq_expressions.push(inner);
             };
 
             self.consume(TokenType::RightParen, "Expected ')' after expression.")?;
@@ -182,8 +182,8 @@ impl<'a> BasicParser<'a> {
             self
                 .advance()
                 .filter(|tk| tk.ty().is_literal())
-                .map(|tk| Expression::Literal(tk))
-                .ok_or(super::ParseError::from_other("Unexpected EOS"))
+                .map(Expression::Literal)
+                .ok_or_else(|| super::ParseError::from_other("Unexpected EOS"))
         }
     }
 }
@@ -192,6 +192,6 @@ impl<'a> Parser for BasicParser<'a> {
     type Out = Result<AbstractTree, super::ParseError>;
 
     fn parse(mut self) -> Result<AbstractTree, super::ParseError> {
-        self.expression().map(|exp| AbstractTree::new(exp))
+        self.expression().map(AbstractTree::new)
     }
 }

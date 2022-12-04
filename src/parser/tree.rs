@@ -21,5 +21,5 @@ pub enum Expression {
         right: Box<Expression>,
     },
     Literal(Token),
-    Sequence(Vec<Box<Expression>>),
+    Sequence(Vec<Expression>),
 }

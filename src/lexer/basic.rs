@@ -32,9 +32,8 @@ impl<'a> BasicLexer<'a> {
                 self.line_num += 1;
             }
 
-            match self.advance() {
-                Some(c) => buffer.push(c),
-                None => {}
+            if let Some(c) = self.advance() {
+                buffer.push(c)
             }
         }
 
@@ -53,24 +52,21 @@ impl<'a> BasicLexer<'a> {
         buffer.push(c);
         let mut is_float = false;
 
-        while self.peek().map(|opt| opt.is_digit(10)).unwrap_or(false) {
-            match self.advance() {
-                Some(c) => buffer.push(c),
-                None => {}
+        while self.peek().map(|opt| opt.is_ascii_digit()).unwrap_or(false) {
+            if let Some(c) = self.advance() {
+                buffer.push(c)
             }
         }
 
         if self.peek().map(|opt| opt == '.').unwrap_or(false) {
-            match self.advance() {
-                Some(c) => buffer.push(c),
-                None => {}
+            if let Some(c) = self.advance() {
+                buffer.push(c)
             }
             is_float = true;
 
-            while self.peek().map(|opt| opt.is_digit(10)).unwrap_or(false) {
-                match self.advance() {
-                    Some(c) => buffer.push(c),
-                    None => {}
+            while self.peek().map(|opt| opt.is_ascii_digit()).unwrap_or(false) {
+                if let Some(c) = self.advance() {
+                    buffer.push(c)
                 }
             }
         }
@@ -87,9 +83,8 @@ impl<'a> BasicLexer<'a> {
         buffer.push(c);
 
         while self.peek().map(|opt| opt.is_alphabetic()).unwrap_or(false) {
-            match self.advance() {
-                Some(c) => buffer.push(c),
-                None => {}
+            if let Some(c) = self.advance() {
+                buffer.push(c)
             }
         }
 
@@ -103,7 +98,7 @@ impl<'a> BasicLexer<'a> {
     }
 
     fn peek(&mut self) -> Option<char> {
-        return self.chars.peek().map(|item| *item);
+        return self.chars.peek().copied();
     }
 
     fn advance(&mut self) -> Option<char> {
@@ -134,7 +129,7 @@ impl<'a> BasicLexer<'a> {
     }
 
     fn dec_comment_level(&mut self) {
-        if self.comment_level <= 0 {
+        if self.comment_level == 0 {
             panic!("Cannot reduce comment level below 0");
         } else {
             self.comment_level -= 1;
@@ -150,7 +145,7 @@ impl<'a> Lexer for BasicLexer<'a> {
     fn scan_token(&mut self) -> Option<token::Token> {
         match self.advance() {
             None => { 
-                Some(self.generate_token(token::TokenType::EOF))
+                Some(self.generate_token(token::TokenType::Eof))
             },
 
             Some(' ') | Some('\r') | Some('\t') => None,
@@ -222,7 +217,7 @@ impl<'a> Lexer for BasicLexer<'a> {
 
             Some('/') => {
                 if self.match_char('/') {
-                    while self.peek() != Some('\n') && self.peek() != None {
+                    while self.peek() != Some('\n') && self.peek().is_some() {
                         let _ = self.advance();
                     }
                     None
@@ -236,7 +231,7 @@ impl<'a> Lexer for BasicLexer<'a> {
 
             Some('"') => self.string(),
 
-            Some(c) if c.is_digit(10) => {
+            Some(c) if c.is_ascii_digit() => {
                 self.number(c)
             },
 
@@ -254,14 +249,13 @@ impl<'a> Lexer for BasicLexer<'a> {
 
         while !self.is_at_end() {
             let tok = self.scan_token();
-            match tok {
-                Some(t) => tokens.push(t),
-                None => (),
+            if let Some(t) = tok {
+                tokens.push(t)
             }
             self.start = self.current;
         }
 
-        tokens.push(self.generate_token(token::TokenType::EOF));
+        tokens.push(self.generate_token(token::TokenType::Eof));
 
         tokens
     }

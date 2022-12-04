@@ -19,16 +19,16 @@ impl<'a> Assembler for BasicAssembler<'a> {
 
     fn assemble(&mut self, chunks: Vec<Chunk>) -> Result<(), AssembleError> {
         for chunk in chunks {
-            self.output_file.write(&CHUNK_HEADER)?;
-            self.output_file.write(&CONSTANT_POOL_HEADER)?;
-            self.output_file.write(&[0u8, chunk.constants().len() as u8])?;
+            self.output_file.write_all(&CHUNK_HEADER)?;
+            self.output_file.write_all(&CONSTANT_POOL_HEADER)?;
+            self.output_file.write_all(&[0u8, chunk.constants().len() as u8])?;
 
             let constants_in_chunk = chunk.constants();
             for constant in constants_in_chunk {
                 match constant {
                     ThetaValue::Double(d) => {
-                        self.output_file.write(&DOUBLE_MARKER)?;
-                        self.output_file.write(&d.to_le_bytes())?;
+                        self.output_file.write_all(DOUBLE_MARKER)?;
+                        self.output_file.write_all(&d.to_le_bytes())?;
                     },
                 };
             }

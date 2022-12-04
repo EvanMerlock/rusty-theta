@@ -29,7 +29,7 @@ impl Token {
     pub const fn new(line_num: usize, begin: usize, end: usize, typ: TokenType) -> Token {
         Token (
             LocationData {
-                line_num: line_num,
+                line_num,
                 tok_begin: begin,
                 tok_end: end
             },
@@ -38,11 +38,11 @@ impl Token {
     }
 
     pub fn line_num(&self) -> usize {
-        return self.0.line_num
+        self.0.line_num
     }
 
     pub fn char_loc(&self) -> usize {
-        return self.0.tok_begin
+        self.0.tok_begin
     }
 
     pub fn ty(&self) -> TokenType {
@@ -76,7 +76,7 @@ pub enum TokenType {
     And, Class, Else, False, Fun, For, If, Or,
     Return, Super, This, True, Let, While,
 
-    EOF
+    Eof
 }
 
 impl TokenType {

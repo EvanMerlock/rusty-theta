@@ -29,14 +29,14 @@ pub enum ParseError {
 impl ParseError {
     fn from_token(token: crate::lexer::token::Token, msg: &'static str) -> ParseError {
         ParseError::TokenError {
-            token: token,
-            msg: msg
+            token,
+            msg
         }
     }
 
     fn from_other(msg: &'static str) -> ParseError {
         ParseError::Other {
-            msg: msg
+            msg
         }
     }
 }
@@ -45,13 +45,13 @@ impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParseError::TokenError {
-                token: token,
-                msg: msg
+                token,
+                msg
             } => match token.ty() {
-                crate::lexer::token::TokenType::EOF => write!(f, "[Parse] Error: {} at end of file", msg),
+                crate::lexer::token::TokenType::Eof => write!(f, "[Parse] Error: {} at end of file", msg),
                 _ => write!(f, "[Parse] Error: {} at line {}, character {}", msg, token.line_num(), token.char_loc())
             },
-            ParseError::Other { msg: msg } => write!(f, "[Parse] Error: {}", msg)
+            ParseError::Other { msg } => write!(f, "[Parse] Error: {}", msg)
         }
 
     }

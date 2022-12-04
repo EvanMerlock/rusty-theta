@@ -1,6 +1,6 @@
 use super::{instruction::OpCode, value::ThetaValue};
 
-pub const CHUNK_HEADER: [u8; 8] = [084, 104, 101, 067, 104, 117, 110, 107];
+pub const CHUNK_HEADER: [u8; 8] = [84, 104, 101, 67, 104, 117, 110, 107];
 
 #[derive(Debug)]
 pub struct Chunk {
@@ -27,6 +27,12 @@ impl Chunk {
 
     pub fn constants(&self) -> &Vec<ThetaValue> {
         &self.constants
+    }
+}
+
+impl Default for Chunk {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

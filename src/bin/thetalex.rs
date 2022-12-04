@@ -37,7 +37,7 @@ fn main() -> Result<(), std::io::Error> {
     let mut line = 1;
     for token in tokens {
         if token.line_num() != line {
-            write!(&mut out_file, "\n")?;
+            writeln!(&mut out_file)?;
             line = token.line_num();
         }
 
