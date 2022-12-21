@@ -1,5 +1,5 @@
 use core::{fmt, panic};
-use std::{error::Error, fs::read};
+use std::{error::Error};
 
 use crate::vm::{chunk::CHUNK_HEADER, value::{CONSTANT_POOL_HEADER, DOUBLE_MARKER}};
 

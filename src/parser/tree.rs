@@ -1,11 +1,13 @@
 use crate::lexer::token::Token;
 
 #[derive(Debug, PartialEq)]
-pub struct AbstractTree(Expression);
+pub enum AbstractTree {
+    Expression(Expression),
+}
 
 impl AbstractTree {
     pub fn new(expression: Expression) -> AbstractTree {
-        AbstractTree(expression)
+        AbstractTree::Expression(expression)
     }
 }
 

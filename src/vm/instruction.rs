@@ -6,4 +6,8 @@
 pub enum OpCode {
     RETURN,
     CONSTANT { offset: usize },
+    ADD,
+    SUBTRACT,
+    MULTIPLY,
+    DIVIDE,
 }

@@ -28,6 +28,10 @@ impl Chunk {
     pub fn constants(&self) -> &Vec<ThetaValue> {
         &self.constants
     }
+
+    pub fn merge_chunk(self, other: Chunk) -> Chunk {
+        todo!()
+    }
 }
 
 impl Default for Chunk {

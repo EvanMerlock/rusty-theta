@@ -1,10 +1,10 @@
-use super::{Parser, BasicParser, tree::AbstractTree, tree::Expression};
 use crate::lexer::token::{Token, TokenType};
 
 macro_rules! define_parse_test {
     ($test_name:ident, $input:expr, $output:expr) => {
         #[test]
         fn $test_name() {
+            use super::{Parser, BasicParser, tree::AbstractTree, tree::Expression};
             let input = $input;
             let mut iter = input.into_iter();
             {
