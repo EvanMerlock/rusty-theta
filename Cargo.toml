@@ -8,3 +8,6 @@ edition = "2021"
 lazy_static = "1.4.0"
 clap = { version = "3.0.0", features = ["derive"] }
 utf8-chars = "1.0.2"
+log = "0.4.17"
+env_logger = "0.10.0"
+tracing = "0.1.37"

@@ -38,6 +38,10 @@ impl<'a> Assembler for BasicAssembler<'a> {
                 match opcode {
                     OpCode::RETURN => self.output_file.write(&[0u8])?,
                     OpCode::CONSTANT { offset } => self.output_file.write(&[1u8, *offset as u8])?,
+                    OpCode::ADD => todo!(),
+                    OpCode::SUBTRACT => todo!(),
+                    OpCode::MULTIPLY => todo!(),
+                    OpCode::DIVIDE => todo!(),
                 };
             }
         }

@@ -22,7 +22,9 @@ pub enum AssembleError {
 
 impl fmt::Display for AssembleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        match self {
+            AssembleError::IOError(e) => write!(f, "AssembleError: {:?}", e),
+        }
     }
 }
 
