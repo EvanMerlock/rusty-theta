@@ -1,7 +1,7 @@
 use core::{fmt, panic};
 use std::{error::Error};
 
-use crate::vm::{chunk::CHUNK_HEADER, value::{CONSTANT_POOL_HEADER, DOUBLE_MARKER}};
+use crate::vm::{chunk::CHUNK_HEADER, value::{CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER}};
 
 pub trait Disassembler {
     type Out;
@@ -83,12 +83,26 @@ impl Disassembler for StringDisassembler {
             let marker = &chunk[offset..offset+2];
             println!("marker: {:?}", marker);
             match marker {
-                DOUBLE_MARKER => {
+                sli if sli == DOUBLE_MARKER => {
                     offset += 2;
                     let dbl: [u8; 8] = chunk[offset..offset+8].try_into()?;                        
                     readout.push_str(&format!("Constant: {}\r\n", f64::from_le_bytes(dbl)));
                     offset += 8;
                 },
+                sli if sli == INT_MARKER => {
+                    offset += 2;
+                    let dbl: [u8; 8] = chunk[offset..offset+8].try_into()?;
+                    let int = i64::from_le_bytes(dbl);
+                    readout.push_str(&format!("Constant: {}\r\n", int));
+                    offset += 8;
+                },
+                sli if sli == BOOL_MARKER => {
+                    offset += 2;
+                    let bol: [u8; 1] = chunk[offset..offset+1].try_into()?;
+                    let bol = bol == [1u8];
+                    readout.push_str(&format!("Constant: {}\r\n", bol));
+                    offset += 1;
+                }
                 _ => panic!("invalid marker found in chunk"),
             }
         }
