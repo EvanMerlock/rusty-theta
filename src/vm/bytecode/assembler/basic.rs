@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::vm::{chunk::{Chunk, CHUNK_HEADER}, instruction::OpCode, value::{CONSTANT_POOL_HEADER, ThetaValue, DOUBLE_MARKER}};
+use crate::vm::{chunk::{Chunk, CHUNK_HEADER}, instruction::OpCode, value::{CONSTANT_POOL_HEADER, ThetaValue, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER}};
 
 use super::{Assembler, AssembleError};
 
@@ -31,6 +31,14 @@ impl<'a> Assembler for BasicAssembler<'a> {
                     ThetaValue::Double(d) => {
                         self.output_file.write_all(DOUBLE_MARKER)?;
                         self.output_file.write_all(&d.to_le_bytes())?;
+                    },
+                    ThetaValue::Int(i) => {
+                        self.output_file.write_all(INT_MARKER)?;
+                        self.output_file.write_all(&i.to_le_bytes())?;
+                    },
+                    ThetaValue::Bool(b) => {
+                        self.output_file.write_all(BOOL_MARKER)?;
+                        self.output_file.write_all(&([(*b) as u8]))?;
                     },
                 };
             }

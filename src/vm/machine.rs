@@ -1,7 +1,7 @@
 use log::debug;
 use tracing::field::debug;
 
-use crate::vm::{chunk::CHUNK_HEADER, value::CONSTANT_POOL_HEADER};
+use crate::vm::{chunk::CHUNK_HEADER, value::{CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER}};
 
 use super::{value::ThetaValue, bytecode::{Disassembler, DisassembleError}};
 
@@ -55,7 +55,7 @@ impl Disassembler for VM {
             let marker = &chunk[offset..offset+2];
             debug!("marker: {:?}", marker);
             match marker {
-                DOUBLE_MARKER => {
+                sli if sli == DOUBLE_MARKER => {
                     offset += 2;
                     let dbl: [u8; 8] = chunk[offset..offset+8].try_into()?;
                     let float = f64::from_le_bytes(dbl);
@@ -63,6 +63,22 @@ impl Disassembler for VM {
                     self.constants.push(ThetaValue::Double(float));              
                     offset += 8;
                 },
+                sli if sli == INT_MARKER => {
+                    offset += 2;
+                    let dbl: [u8; 8] = chunk[offset..offset+8].try_into()?;
+                    let int = i64::from_le_bytes(dbl);
+                    debug!("i64 found in constant pool: {}", int);
+                    self.constants.push(ThetaValue::Int(int));              
+                    offset += 8;
+                },
+                sli if sli == BOOL_MARKER => {
+                    offset += 2;
+                    let bol: [u8; 1] = chunk[offset..offset+1].try_into()?;
+                    let bol = bol == [1u8];
+                    debug!("bool found in constant pool: {}", bol);
+                    self.constants.push(ThetaValue::Bool(bol));              
+                    offset += 1;
+                }
                 _ => panic!("invalid marker found in chunk"),
             }
         }
@@ -88,6 +104,8 @@ impl Disassembler for VM {
 
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l+r)),
+                        (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Int(l+r)),
+                        _ => panic!("invalid operands"),
                     };
                     offset += 1
                 },
@@ -98,6 +116,8 @@ impl Disassembler for VM {
 
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l-r)),
+                        (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Int(l-r)),
+                        _ => panic!("invalid operands"),
                     };
                     offset += 1
                 },
@@ -108,6 +128,8 @@ impl Disassembler for VM {
 
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l*r)),
+                        (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Int(l*r)),
+                        _ => panic!("invalid operands"),
                     };
                     offset += 1
                 },
@@ -118,6 +140,8 @@ impl Disassembler for VM {
 
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l/r)),
+                        (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Int(l/r)),
+                        _ => panic!("invalid operands"),
                     };
                     offset += 1
                 },
@@ -127,6 +151,8 @@ impl Disassembler for VM {
 
                     match left {
                         ThetaValue::Double(l) => self.stack.push(ThetaValue::Double(-l)),
+                        ThetaValue::Int(_) => todo!(),
+                        _ => panic!("invalid operands")
                     };
                     offset += 1
                 },

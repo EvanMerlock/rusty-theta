@@ -49,8 +49,10 @@ impl ASTVisitor for ToByteCode {
             },
             Expression::Literal(lit_token) => {
                 match lit_token.ty() {
-                    token::TokenType::Integer(i) => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Double(i as f64)),
+                    token::TokenType::Integer(i) => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Int(i as i64)),
                     token::TokenType::Float(f) => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Double(f as f64)),
+                    token::TokenType::True => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Bool(true)),
+                    token::TokenType::False => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Bool(false)),
                     token::TokenType::Str(s) => todo!(),
                     _ => panic!("invalid token in literal location when visiting for bytecode transform"),
                 }
