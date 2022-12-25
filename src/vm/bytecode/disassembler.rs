@@ -6,8 +6,8 @@ use crate::vm::{chunk::CHUNK_HEADER, value::{CONSTANT_POOL_HEADER, DOUBLE_MARKER
 pub trait Disassembler {
     type Out;
 
-    fn disassemble(&mut self) -> Self::Out;
-    fn disassemble_chunk(&self, chunk: &[u8]) -> Self::Out;
+    fn disassemble(&mut self, code: &dyn AsRef<[u8]>) -> Self::Out;
+    fn disassemble_chunk(&mut self, chunk: &[u8]) -> Self::Out;
 }
 
 #[derive(Debug)]
@@ -44,22 +44,24 @@ impl From<std::array::TryFromSliceError> for DisassembleError {
     }
 }
 
-pub struct StringDisassembler<'a> {
-    reader: &'a mut Box<dyn std::io::BufRead>
-}
+pub struct StringDisassembler;
 
-impl<'a> StringDisassembler<'a> {
-    pub fn new(in_read: &'a mut Box<dyn std::io::BufRead>) -> StringDisassembler<'a> {
-        StringDisassembler { 
-            reader: in_read
-        }
+impl StringDisassembler {
+    pub fn new() -> StringDisassembler {
+        StringDisassembler{}
     }
 }
 
-impl<'a> Disassembler for StringDisassembler<'a> {
+impl Default for StringDisassembler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Disassembler for StringDisassembler {
     type Out = Result<String, DisassembleError>;
 
-    fn disassemble_chunk(&self, chunk: &[u8]) -> Result<String, DisassembleError> {
+    fn disassemble_chunk(&mut self, chunk: &[u8]) -> Result<String, DisassembleError> {
         let mut offset = 18;
         let mut readout = String::new();
 
@@ -97,6 +99,11 @@ impl<'a> Disassembler for StringDisassembler<'a> {
             match chunk[offset] {
                 0x0 => { readout.push_str("Op: Return (0x0)\r\n"); offset += 1 },
                 0x1 => { readout.push_str(&format!("Op: Constant (0x1) with offset: {}\r\n", &chunk[offset+1])); offset += 2 },
+                0x2 => { readout.push_str("Op: Add (0x2)\r\n"); offset += 1 },
+                0x3 => { readout.push_str("Op: Sub (0x3)\r\n"); offset += 1 },
+                0x4 => { readout.push_str("Op: Mul (0x4)\r\n"); offset += 1 },
+                0x5 => { readout.push_str("Op: Div (0x5)\r\n"); offset += 1 },
+                0x6 => { readout.push_str("Op: Neg (0x6)\r\n"); offset += 1 },
                 code => { readout.push_str(&format!("Op: Unknown ({:#x})\r\n", code)); offset += 1 }
             }
         }
@@ -104,14 +111,11 @@ impl<'a> Disassembler for StringDisassembler<'a> {
         Ok(readout)
     }
 
-    fn disassemble(&mut self) -> Result<String, DisassembleError> {
-        let mut input: Vec<u8> = Vec::new();
-        self.reader.read_to_end(&mut input)?;
-
+    fn disassemble(&mut self, input: &dyn AsRef<[u8]>) -> Result<String, DisassembleError> {
         let mut readout = String::new();
 
         // TOOD: this only handles 1 chunk as that's all we're passing it right now.
-        let chunk_disassembly = self.disassemble_chunk(&input)?;
+        let chunk_disassembly = self.disassemble_chunk(input.as_ref())?;
         readout.push_str(&chunk_disassembly);
 
         Ok(readout)

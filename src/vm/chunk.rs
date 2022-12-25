@@ -30,7 +30,24 @@ impl Chunk {
     }
 
     pub fn merge_chunk(self, other: Chunk) -> Chunk {
-        todo!()
+        let offset_size = self.constants.len();
+        let mut new_chunk = Chunk::new();
+        for constant in self.constants {
+            new_chunk.write_constant(constant);
+        }
+        for opcode in self.instructions {
+            new_chunk.write_to_chunk(opcode);
+        }
+        for constant in other.constants {
+            new_chunk.write_constant(constant);
+        }
+        for opcode in other.instructions {
+            match opcode {
+                OpCode::CONSTANT { offset } => new_chunk.write_to_chunk(OpCode::CONSTANT { offset: offset + offset_size }),
+                _ => new_chunk.write_to_chunk(opcode),
+            }
+        }
+        new_chunk
     }
 }
 

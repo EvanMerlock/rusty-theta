@@ -10,4 +10,5 @@ pub enum OpCode {
     SUBTRACT,
     MULTIPLY,
     DIVIDE,
+    NEGATE,
 }

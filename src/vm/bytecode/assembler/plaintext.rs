@@ -34,10 +34,11 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
                 match opcode {
                     OpCode::RETURN => writeln!(self.output_file, "Op: Return (0x0)")?,
                     OpCode::CONSTANT { offset } => writeln!(self.output_file, "Op: Constant (0x1), with constant {:?}", chunk.constants()[*offset])?,
-                    OpCode::ADD => todo!(),
-                    OpCode::SUBTRACT => todo!(),
-                    OpCode::MULTIPLY => todo!(),
-                    OpCode::DIVIDE => todo!(),
+                    OpCode::ADD => writeln!(self.output_file, "Op: Add (0x2)")?,
+                    OpCode::SUBTRACT => writeln!(self.output_file, "Op: Sub (0x3)")?,
+                    OpCode::MULTIPLY => writeln!(self.output_file, "Op: Mul (0x4)")?,
+                    OpCode::DIVIDE => writeln!(self.output_file, "Op: Div (0x5)")?,
+                    OpCode::NEGATE => writeln!(self.output_file, "Op: Neg (0x6)")?,
                 };
             }
         }

@@ -17,6 +17,7 @@ struct ThetaASTOptions {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let options = ThetaASTOptions::parse();
 
     let mut in_file: Box<dyn std::io::BufRead> = 

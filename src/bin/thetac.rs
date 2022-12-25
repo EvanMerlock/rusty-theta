@@ -22,6 +22,7 @@ enum AssemblerImpl {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let options = ThetaCOptions::parse();
 
     let mut in_file: Box<dyn std::io::BufRead> = 

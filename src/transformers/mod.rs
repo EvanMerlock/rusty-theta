@@ -2,9 +2,9 @@ use std::{fmt, error::Error};
 
 use crate::parser::tree::{AbstractTree, Expression};
 
-mod to_bytecode;
+pub mod to_bytecode;
 
-trait ASTTransformer {
+pub trait ASTTransformer {
 
     type Out;
 
@@ -12,7 +12,7 @@ trait ASTTransformer {
 
 }
 
-trait ASTVisitor {
+pub trait ASTVisitor {
 
     type Out;
 

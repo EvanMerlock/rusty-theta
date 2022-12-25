@@ -1,8 +1,8 @@
-use crate::{vm::{chunk::Chunk, instruction::OpCode}, build_chunk, parser::tree::{Expression, AbstractTree}, lexer::token};
+use crate::{vm::{chunk::Chunk, instruction::OpCode, value::ThetaValue}, build_chunk, parser::tree::{Expression, AbstractTree}, lexer::token};
 
 use super::{ASTTransformer, ASTVisitor};
 
-struct ToByteCode;
+pub struct ToByteCode;
 
 impl ASTTransformer for ToByteCode {
 
@@ -39,8 +39,22 @@ impl ASTVisitor for ToByteCode {
                 };
                 res_chunk.merge_chunk(op_chunk)
             },
-            Expression::Unary { operator, right } => todo!(),
-            Expression::Literal(_) => todo!(),
+            Expression::Unary { operator, right } => {
+                let right_val = ToByteCode::visit_expression(*right)?;
+                let op_chunk = match operator.ty() {
+                    token::TokenType::Minus => build_chunk!(OpCode::NEGATE),
+                    _ => panic!("invalid token in binary precedence when visiting for bytecode transform")
+                };
+                right_val.merge_chunk(op_chunk)
+            },
+            Expression::Literal(lit_token) => {
+                match lit_token.ty() {
+                    token::TokenType::Integer(i) => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Double(i as f64)),
+                    token::TokenType::Float(f) => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Double(f as f64)),
+                    token::TokenType::Str(s) => todo!(),
+                    _ => panic!("invalid token in literal location when visiting for bytecode transform"),
+                }
+            },
             Expression::Sequence(exprs) => {
                 exprs
                     .into_iter()

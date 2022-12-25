@@ -15,6 +15,7 @@ struct ThetaDOptions {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let options = ThetaDOptions::parse();
 
     let mut in_file: Box<dyn std::io::BufRead> = 
@@ -35,8 +36,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let mut decompiler = StringDisassembler::new(&mut in_file);
-    let chunks = decompiler.disassemble()?;
+    let mut decompiler = StringDisassembler::new();
+    let mut buffer = Vec::new();
+    in_file.read_to_end(&mut buffer)?;
+    let chunks = decompiler.disassemble(&buffer)?;
 
     write!(&mut out_file, "{}", chunks)?;
 

@@ -16,6 +16,7 @@ struct ThetaLexOptions {
 }
 
 fn main() -> Result<(), std::io::Error> {
+    env_logger::init();
     let options = ThetaLexOptions::parse();
 
     let mut in_file = BufReader::new(File::open(options.in_file)?);
