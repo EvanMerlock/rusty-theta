@@ -2,8 +2,9 @@ use std::io::Cursor;
 
 use log::{LevelFilter, debug};
 
+use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
 use crate::bytecode::{BasicAssembler, Assembler, Disassembler, OpCode, Chunk};
-use crate::{vm::{VM}, build_chunk, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}, transformers::{to_bytecode::ToByteCode, ASTTransformer}};
+use crate::{vm::{VM}, build_chunk, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}};
 
 pub struct Repl {
     machine: VM,
