@@ -1,4 +1,4 @@
-use super::{instruction::OpCode, value::ThetaValue};
+use super::{OpCode, ThetaValue};
 
 pub const CHUNK_HEADER: [u8; 8] = [84, 104, 101, 67, 104, 117, 110, 107];
 
@@ -62,7 +62,7 @@ impl Default for Chunk {
 macro_rules! build_chunk {
     ($($opcode:expr),+) => {
         {
-            use $crate::vm::chunk::Chunk;
+            use $crate::bytecode::Chunk;
             let mut temp_chunk = Chunk::new();
             $(
                 temp_chunk.write_to_chunk($opcode);
@@ -72,7 +72,7 @@ macro_rules! build_chunk {
     };
     ($($opcode:expr),+;$($constants:expr),+) => {
         {
-            use $crate::vm::chunk::Chunk;
+            use $crate::bytecode::Chunk;
             let mut temp_chunk = Chunk::new();
             $(
                 temp_chunk.write_to_chunk($opcode);

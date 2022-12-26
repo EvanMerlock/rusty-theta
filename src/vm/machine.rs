@@ -1,8 +1,6 @@
 use log::debug;
 
-use crate::vm::{chunk::CHUNK_HEADER, value::{CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER}};
-
-use super::{value::ThetaValue, bytecode::{Disassembler, DisassembleError}};
+use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError};
 
 pub struct VM {
     stack: Vec<ThetaValue>,

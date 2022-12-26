@@ -1,4 +1,4 @@
-use crate::vm::{chunk::Chunk, instruction::OpCode};
+use crate::bytecode::{Chunk, OpCode};
 
 use super::{Assembler, AssembleError};
 

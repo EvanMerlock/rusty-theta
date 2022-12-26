@@ -1,5 +1,5 @@
 use clap::{Parser as ClapParser, clap_derive::ArgEnum};
-use theta_lang::vm::{chunk::{Chunk, self}, bytecode::{BasicAssembler, Assembler, PlainTextAssembler, AssembleError}, instruction::OpCode, value::ThetaValue};
+use theta_lang::bytecode::{BasicAssembler, Assembler, PlainTextAssembler, AssembleError};
 use std::{fs::File, io::BufReader};
 use theta_lang::build_chunk;
 #[derive(ClapParser)]
@@ -42,10 +42,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Box::new(std::io::stdout())
         }
     };
-
-    let mut chunks: Vec<Chunk> = Vec::new();
-    chunks.push(build_chunk!(OpCode::RETURN, OpCode::CONSTANT { offset: 0 }; ThetaValue::Double(16.0)));
     
+    let chunks = todo!();
+
     {
         let mut assembler: Box<dyn Assembler<Out = Result<(), AssembleError>>> = match options.assembler {
             AssemblerImpl::Basic => Box::new(BasicAssembler::new(&mut out_file)),

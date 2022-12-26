@@ -7,7 +7,7 @@ pub use self::plaintext::*;
 use core::fmt;
 use std::error::Error;
 
-use crate::vm::{chunk::Chunk};
+use crate::bytecode::{Chunk};
 
 pub trait Assembler {
     type Out;

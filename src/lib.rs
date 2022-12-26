@@ -5,3 +5,4 @@ pub mod vm;
 mod error;
 pub mod repl;
 pub mod ast;
+pub mod bytecode;

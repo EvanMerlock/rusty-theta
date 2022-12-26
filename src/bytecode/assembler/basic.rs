@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::vm::{chunk::{Chunk, CHUNK_HEADER}, instruction::OpCode, value::{CONSTANT_POOL_HEADER, ThetaValue, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER}};
+use crate::bytecode::{Chunk, CHUNK_HEADER, OpCode, CONSTANT_POOL_HEADER, ThetaValue, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER};
 
 use super::{Assembler, AssembleError};
 

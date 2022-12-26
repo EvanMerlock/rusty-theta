@@ -1,7 +1,7 @@
 use core::{fmt, panic};
 use std::{error::Error};
 
-use crate::vm::{chunk::CHUNK_HEADER, value::{CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER}};
+use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER};
 
 pub trait Disassembler {
     type Out;

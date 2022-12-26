@@ -1,4 +1,5 @@
-use crate::{vm::{chunk::Chunk, instruction::OpCode, value::ThetaValue}, build_chunk, lexer::token};
+use crate::{build_chunk, lexer::token};
+use crate::bytecode::{Chunk, OpCode, ThetaValue};
 use crate::ast::{AbstractTree, Expression};
 
 use super::{ASTTransformer, ASTVisitor};

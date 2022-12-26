@@ -1,5 +1,5 @@
 use clap::{Parser as ClapParser};
-use theta_lang::vm::bytecode::{StringDisassembler, Disassembler};
+use theta_lang::bytecode::{StringDisassembler, Disassembler};
 use std::fs::File;
 use std::io::BufReader;
 
