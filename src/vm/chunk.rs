@@ -43,6 +43,7 @@ impl Chunk {
         }
         for opcode in other.instructions {
             match opcode {
+                // constant relocation
                 OpCode::CONSTANT { offset } => new_chunk.write_to_chunk(OpCode::CONSTANT { offset: offset + offset_size }),
                 _ => new_chunk.write_to_chunk(opcode),
             }

@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt;
 
-pub(crate) mod tree;
 mod basic;
 
 #[cfg(test)]

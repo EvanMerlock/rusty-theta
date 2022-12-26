@@ -4,7 +4,8 @@ macro_rules! define_parse_test {
     ($test_name:ident, $input:expr, $output:expr) => {
         #[test]
         fn $test_name() {
-            use super::{Parser, BasicParser, tree::AbstractTree, tree::Expression};
+            use crate::ast::{AbstractTree, Expression};
+            use super::{Parser, BasicParser};
             let input = $input;
             let mut iter = input.into_iter();
             {

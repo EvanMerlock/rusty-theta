@@ -1,4 +1,5 @@
-use crate::{vm::{chunk::Chunk, instruction::OpCode, value::ThetaValue}, build_chunk, parser::tree::{Expression, AbstractTree}, lexer::token};
+use crate::{vm::{chunk::Chunk, instruction::OpCode, value::ThetaValue}, build_chunk, lexer::token};
+use crate::ast::{AbstractTree, Expression};
 
 use super::{ASTTransformer, ASTVisitor};
 
@@ -8,7 +9,7 @@ impl ASTTransformer for ToByteCode {
 
     type Out = Chunk;
 
-    fn transform(tree: crate::parser::tree::AbstractTree) -> Result<Chunk, super::TransformError> {
+    fn transform(tree: AbstractTree) -> Result<Chunk, super::TransformError> {
            Ok(match tree {
                 AbstractTree::Expression(exp) => {
                     ToByteCode::visit_expression(exp)?

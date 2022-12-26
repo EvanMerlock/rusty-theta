@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 use log::debug;
 
-use super::tree::{AbstractTree, Expression};
+use crate::ast::{AbstractTree, Expression};
 use super::Parser;
 use crate::lexer::token::{Token, TokenType};
 

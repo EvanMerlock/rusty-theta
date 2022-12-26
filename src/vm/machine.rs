@@ -1,5 +1,4 @@
 use log::debug;
-use tracing::field::debug;
 
 use crate::vm::{chunk::CHUNK_HEADER, value::{CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER}};
 
@@ -28,6 +27,12 @@ impl VM {
 
     pub fn clear_const_pool(&mut self) {
         self.constants.clear()
+    }
+}
+
+impl Default for VM {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
