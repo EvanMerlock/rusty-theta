@@ -1,4 +1,6 @@
 use std::iter::Peekable;
+use log::debug;
+
 use super::tree::{AbstractTree, Expression};
 use super::Parser;
 use crate::lexer::token::{Token, TokenType};
@@ -88,10 +90,12 @@ impl<'a> BasicParser<'a> {
     }
 
     fn expression(&mut self) -> Result<Expression, super::ParseError> {
+        debug!("read expression");
         self.equality() 
     }
 
     fn equality(&mut self) -> Result<Expression, super::ParseError> {
+        debug!("read equality");
         let mut lhs = self.comparison()?;
 
         while let Some(oper) = self.match_token([TokenType::BangEqual, TokenType::EqualEqual]) {
@@ -107,6 +111,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn comparison(&mut self) -> Result<Expression, super::ParseError> {
+        debug!("read comparison");
         let mut lhs = self.term()?;
 
         while let Some(oper) = self.match_token([TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual]) {
@@ -122,6 +127,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn term(&mut self) -> Result<Expression, super::ParseError> {
+        debug!("read term");
         let mut lhs = self.factor()?;
 
         while let Some(oper) = self.match_token([TokenType::Minus, TokenType::Plus]) {
@@ -137,6 +143,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn factor(&mut self) -> Result<Expression, super::ParseError> {
+        debug!("read factor");
         let mut lhs = self.unary()?;
 
         while let Some(oper) = self.match_token([TokenType::Star, TokenType::Slash]) {
@@ -152,6 +159,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn unary(&mut self) -> Result<Expression, super::ParseError> {
+        debug!("read unary");
         if let Some(oper) = self.match_token([TokenType::Bang, TokenType::Minus]) {
             self.unary().map(|rhs| Expression::Unary {
                 operator: oper,
@@ -163,7 +171,9 @@ impl<'a> BasicParser<'a> {
     }
 
     fn primary(&mut self) -> Result<Expression, super::ParseError> {
+        debug!("read primary");
         if self.match_token([TokenType::LeftParen]).is_some() {
+            debug!("read seq");
             let mut seq_expressions = vec![];
             let mut inner = self.expression()?;
 

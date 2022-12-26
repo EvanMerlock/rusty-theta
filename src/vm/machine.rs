@@ -99,8 +99,8 @@ impl Disassembler for VM {
                 },
                 0x2 => {
                     debug!("Op: Add (0x2)\r\n");
-                    let left = self.stack.pop().expect("failed to grab value off stack");
                     let right = self.stack.pop().expect("failed to grab value off stack");
+                    let left = self.stack.pop().expect("failed to grab value off stack");
 
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l+r)),
@@ -111,8 +111,8 @@ impl Disassembler for VM {
                 },
                 0x3 => {
                     debug!("Op: Sub (0x3)\r\n");
-                    let left = self.stack.pop().expect("failed to grab value off stack");
                     let right = self.stack.pop().expect("failed to grab value off stack");
+                    let left = self.stack.pop().expect("failed to grab value off stack");
 
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l-r)),
@@ -123,8 +123,8 @@ impl Disassembler for VM {
                 },
                 0x4 => {
                     debug!("Op: Mul (0x3)\r\n");
-                    let left = self.stack.pop().expect("failed to grab value off stack");
                     let right = self.stack.pop().expect("failed to grab value off stack");
+                    let left = self.stack.pop().expect("failed to grab value off stack");
 
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l*r)),
@@ -135,8 +135,8 @@ impl Disassembler for VM {
                 },
                 0x5 => {
                     debug!("Op: Div (0x5)\r\n");
-                    let left = self.stack.pop().expect("failed to grab value off stack");
                     let right = self.stack.pop().expect("failed to grab value off stack");
+                    let left = self.stack.pop().expect("failed to grab value off stack");
 
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l/r)),
@@ -153,6 +153,43 @@ impl Disassembler for VM {
                         ThetaValue::Double(l) => self.stack.push(ThetaValue::Double(-l)),
                         ThetaValue::Int(_) => todo!(),
                         _ => panic!("invalid operands")
+                    };
+                    offset += 1
+                },
+                0x7 => {
+                    debug!("Op: Equal (0x7)\r\n");
+                    let right = self.stack.pop().expect("failed to grab value off stack");
+                    let left = self.stack.pop().expect("failed to grab value off stack");
+
+                    match (left, right) {
+                        (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l==r)),
+                        (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l==r)),
+                        (ThetaValue::Bool(l), ThetaValue::Bool(r)) => self.stack.push(ThetaValue::Bool(l==r)),
+                        _ => panic!("invalid operands"),
+                    };
+                    offset += 1
+                },
+                0x8 => {
+                    debug!("Op: GT (0x8)\r\n");
+                    let right = self.stack.pop().expect("failed to grab value off stack");
+                    let left = self.stack.pop().expect("failed to grab value off stack");
+
+                    match (left, right) {
+                        (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l>r)),
+                        (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l>r)),
+                        _ => panic!("invalid operands"),
+                    };
+                    offset += 1
+                },
+                0x9 => {
+                    debug!("Op: LT (0x9)\r\n");
+                    let right = self.stack.pop().expect("failed to grab value off stack");
+                    let left = self.stack.pop().expect("failed to grab value off stack");
+
+                    match (left, right) {
+                        (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l<r)),
+                        (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l<r)),
+                        _ => panic!("invalid operands"),
                     };
                     offset += 1
                 },

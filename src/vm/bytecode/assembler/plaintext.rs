@@ -39,6 +39,9 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
                     OpCode::MULTIPLY => writeln!(self.output_file, "Op: Mul (0x4)")?,
                     OpCode::DIVIDE => writeln!(self.output_file, "Op: Div (0x5)")?,
                     OpCode::NEGATE => writeln!(self.output_file, "Op: Neg (0x6)")?,
+                    OpCode::EQ => writeln!(self.output_file, "Op: Equal (0x7)")?,
+                    OpCode::GT => writeln!(self.output_file, "Op: Greater Than (0x8)")?,
+                    OpCode::LT => writeln!(self.output_file, "Op: Less Than (0x9)")?,
                 };
             }
         }

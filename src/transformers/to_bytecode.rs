@@ -31,10 +31,12 @@ impl ASTVisitor for ToByteCode {
                     token::TokenType::Minus => build_chunk!(OpCode::SUBTRACT),
                     token::TokenType::Slash => build_chunk!(OpCode::DIVIDE),
                     token::TokenType::Star => build_chunk!(OpCode::MULTIPLY),
-                    token::TokenType::Less => build_chunk!(OpCode::ADD),
+                    token::TokenType::Less => build_chunk!(OpCode::LT),
                     token::TokenType::LessEqual => build_chunk!(OpCode::ADD),
-                    token::TokenType::Greater => build_chunk!(OpCode::ADD),
+                    token::TokenType::Greater => build_chunk!(OpCode::GT),
                     token::TokenType::GreaterEqual => build_chunk!(OpCode::ADD),
+                    token::TokenType::EqualEqual => build_chunk!(OpCode::EQ),
+                    token::TokenType::BangEqual => build_chunk!(OpCode::EQ, OpCode::NEGATE),
                     _ => panic!("invalid token in binary precedence when visiting for bytecode transform")
                 };
                 res_chunk.merge_chunk(op_chunk)

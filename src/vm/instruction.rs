@@ -11,4 +11,7 @@ pub enum OpCode {
     MULTIPLY,
     DIVIDE,
     NEGATE,
+    EQ,
+    GT,
+    LT,
 }

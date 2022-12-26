@@ -81,6 +81,6 @@ pub enum TokenType {
 
 impl TokenType {
     pub fn is_literal(&self) -> bool {
-        matches!(self, Self::Identifier(_) | Self::Str(_) | Self::Integer(_) | Self::Float(_))
+        matches!(self, Self::Identifier(_) | Self::Str(_) | Self::Integer(_) | Self::Float(_) | Self::True | Self::False)
     }
 }

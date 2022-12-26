@@ -53,6 +53,9 @@ impl<'a> Assembler for BasicAssembler<'a> {
                     OpCode::MULTIPLY => self.output_file.write(&[4u8])?,
                     OpCode::DIVIDE => self.output_file.write(&[5u8])?,
                     OpCode::NEGATE => self.output_file.write(&[6u8])?,
+                    OpCode::EQ => self.output_file.write(&[7u8])?,
+                    OpCode::GT => self.output_file.write(&[8u8])?,
+                    OpCode::LT => self.output_file.write(&[9u8])?,
                 };
             }
         }
