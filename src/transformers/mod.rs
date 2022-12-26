@@ -3,6 +3,7 @@ use std::{fmt, error::Error};
 use crate::parser::tree::{AbstractTree, Expression};
 
 pub mod to_bytecode;
+pub mod typeck;
 
 pub trait ASTTransformer {
 
