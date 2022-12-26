@@ -51,6 +51,14 @@ impl Disassembler for VM {
 
         // read const pool size
         let const_pool_size = chunk[17];
+        // TODO: constant pool should not be loaded into the VM.
+        // Instead, only global variables should be loaded into the global scope.
+        // Constants being loaded into the VM would require relocation upon load time
+        // However, it may be possible to do this for string interning.
+        // https://stackoverflow.com/questions/10578984/what-is-java-string-interning
+        // We should still store the string in the constant pool, but if the string literal exists in the heap already
+        // We should reference that instead; live bytecode patching could be a possibility, rather than using the same
+        // OP_CONSTANT bytecode fragment
         for _ in 0..const_pool_size {
             let marker = &chunk[offset..offset+2];
             debug!("marker: {:?}", marker);
