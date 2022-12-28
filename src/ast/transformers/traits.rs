@@ -1,6 +1,6 @@
 use std::{fmt::{self, Debug}, error::Error};
 
-use super::{AugmentedAbstractTree, AugmentedExpression, typeck::TypeCkError};
+use super::{AugmentedAbstractTree, AugmentedExpression, typeck::TypeCkError, AugmentedStatement};
 
 pub trait ASTTransformer<T> where T: Debug + PartialEq {
 
@@ -12,9 +12,20 @@ pub trait ASTTransformer<T> where T: Debug + PartialEq {
 
 pub trait ASTVisitor<T> where T: Debug + PartialEq {
 
+    type InfoOut: Debug + PartialEq;
+
+    fn visit_expression(expr: &AugmentedExpression<T>) -> Result<AugmentedExpression<Self::InfoOut>, TransformError>;
+    fn visit_statement(stmt: &AugmentedStatement<T>) -> Result<AugmentedStatement<Self::InfoOut>, TransformError>;
+}
+
+pub trait ASTTerminator<T> where T: Debug + PartialEq {
+
     type Out;
 
     fn visit_expression(expr: &AugmentedExpression<T>) -> Result<Self::Out, TransformError>;
+    fn visit_statement(stmt: &AugmentedStatement<T>) -> Result<Self::Out, TransformError>;
+
+
 }
 
 #[derive(Debug)]

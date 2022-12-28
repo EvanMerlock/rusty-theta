@@ -34,6 +34,9 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
                 match opcode {
                     OpCode::RETURN => writeln!(self.output_file, "Op: Return (0x0)")?,
                     OpCode::CONSTANT { offset } => writeln!(self.output_file, "Op: Constant (0x1), with constant {:?}", chunk.constants()[*offset])?,
+                    OpCode::PUSH => writeln!(self.output_file, "Op: Push (0x2)")?,
+                    OpCode::POP => writeln!(self.output_file, "Op: Pop (0x3)")?,
+
                     OpCode::ADD => writeln!(self.output_file, "Op: Add (0x2)")?,
                     OpCode::SUBTRACT => writeln!(self.output_file, "Op: Sub (0x3)")?,
                     OpCode::MULTIPLY => writeln!(self.output_file, "Op: Mul (0x4)")?,
@@ -42,6 +45,8 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
                     OpCode::EQ => writeln!(self.output_file, "Op: Equal (0x7)")?,
                     OpCode::GT => writeln!(self.output_file, "Op: Greater Than (0x8)")?,
                     OpCode::LT => writeln!(self.output_file, "Op: Less Than (0x9)")?,
+
+                    OpCode::DEBUG_PRINT => writeln!(self.output_file, "Op: DebugPrint (0xFF)")?,
                 };
             }
         }

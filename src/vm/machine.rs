@@ -45,12 +45,12 @@ impl Disassembler for VM {
         // assert chunk header
         assert!(chunk[0..8] == CHUNK_HEADER);
         
-        debug!("=== BEGIN CHUNK ===\r\n");
+        debug!("=== BEGIN CHUNK ===");
 
         // assert constant pool header
         assert!(chunk[8..16] == CONSTANT_POOL_HEADER);
 
-        debug!("-- BEGIN CONSTANT POOL --\r\n");
+        debug!("-- BEGIN CONSTANT POOL --");
 
         // read const pool size
         let const_pool_size = chunk[17];
@@ -99,17 +99,17 @@ impl Disassembler for VM {
             // read into chunk
             match chunk[offset] {
                 0x0 => { 
-                    debug!("Op: Return (0x0)\r\n"); 
+                    debug!("Op: Return (0x0)"); 
                     println!("{:?}", self.stack.pop()); 
                     offset += 1 
                 },
                 0x1 => { 
-                    debug!("Op: Constant (0x1) with offset: {}\r\n", &chunk[offset+1]); 
+                    debug!("Op: Constant (0x1) with offset: {}", &chunk[offset+1]); 
                     self.stack.push(self.constants[chunk[offset+1] as usize].clone()); 
                     offset += 2 
                 },
                 0x2 => {
-                    debug!("Op: Add (0x2)\r\n");
+                    debug!("Op: Add (0x2)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -121,7 +121,7 @@ impl Disassembler for VM {
                     offset += 1
                 },
                 0x3 => {
-                    debug!("Op: Sub (0x3)\r\n");
+                    debug!("Op: Sub (0x3)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -133,7 +133,7 @@ impl Disassembler for VM {
                     offset += 1
                 },
                 0x4 => {
-                    debug!("Op: Mul (0x3)\r\n");
+                    debug!("Op: Mul (0x3)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -145,7 +145,7 @@ impl Disassembler for VM {
                     offset += 1
                 },
                 0x5 => {
-                    debug!("Op: Div (0x5)\r\n");
+                    debug!("Op: Div (0x5)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -157,7 +157,7 @@ impl Disassembler for VM {
                     offset += 1
                 },
                 0x6 => {
-                    debug!("Op: Neg (0x6)\r\n");
+                    debug!("Op: Neg (0x6)");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
                     match left {
@@ -168,7 +168,7 @@ impl Disassembler for VM {
                     offset += 1
                 },
                 0x7 => {
-                    debug!("Op: Equal (0x7)\r\n");
+                    debug!("Op: Equal (0x7)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -181,7 +181,7 @@ impl Disassembler for VM {
                     offset += 1
                 },
                 0x8 => {
-                    debug!("Op: GT (0x8)\r\n");
+                    debug!("Op: GT (0x8)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -193,7 +193,7 @@ impl Disassembler for VM {
                     offset += 1
                 },
                 0x9 => {
-                    debug!("Op: LT (0x9)\r\n");
+                    debug!("Op: LT (0x9)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -205,7 +205,7 @@ impl Disassembler for VM {
                     offset += 1
                 },
                 code => { 
-                    debug!("Op: Unknown ({:#x})\r\n", code); 
+                    debug!("Op: Unknown ({:#x})", code); 
                     offset += 1 
                 }
             }

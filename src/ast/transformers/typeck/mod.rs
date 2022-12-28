@@ -38,6 +38,7 @@ pub enum TypeInformation {
     String,
     Float,
     Boolean,
+    None,
 }
 
 impl ASTTransformer<()> for TypeCk {
@@ -49,8 +50,14 @@ impl ASTTransformer<()> for TypeCk {
             super::InnerAbstractTree::Expression(expr) => { 
                 let ty_aug = TypeCk::visit_expression(&expr.0)?;
                 let info = *ty_aug.information();
-                debug!("Completed TypeCk w/ Type: {:?}", info);
-                AugmentedAbstractTree::new(ty_aug, info)
+                debug!("Completed TypeCk on Expr w/ Type: {:?}", info);
+                AugmentedAbstractTree::expression(ty_aug, info)
+            },
+            super::InnerAbstractTree::Statement(stmt) => {
+                let ty_aug = TypeCk::visit_statement(&stmt.0)?;
+                let info = *ty_aug.information();
+                debug!("Completed TypeCk on Stmt w/ Type: {:?}", info);
+                AugmentedAbstractTree::statement(ty_aug, info)
             },
         })
     }
@@ -58,9 +65,9 @@ impl ASTTransformer<()> for TypeCk {
 }
 
 impl ASTVisitor<()> for TypeCk {
-    type Out = AugmentedExpression<TypeInformation>;
+    type InfoOut = TypeInformation;
 
-    fn visit_expression(expr: &super::AugmentedExpression<()>) -> Result<Self::Out, super::TransformError> {
+    fn visit_expression(expr: &super::AugmentedExpression<()>) -> Result<AugmentedExpression<Self::InfoOut>, super::TransformError> {
         match expr {
             AugmentedExpression::Binary { left, operator, right, information } => {
                 let left_ty_res = TypeCk::visit_expression(left);
@@ -165,5 +172,9 @@ impl ASTVisitor<()> for TypeCk {
                 Ok(AugmentedExpression::Sequence { seq: new_seq, information: fin_info })
             },
         }
+    }
+
+    fn visit_statement(stmt: &super::AugmentedStatement<()>) -> Result<super::AugmentedStatement<Self::InfoOut>, TransformError> {
+        todo!()
     }
 }

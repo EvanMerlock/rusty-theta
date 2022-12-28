@@ -254,7 +254,7 @@ impl<'a> Lexer for BasicLexer<'a> {
                 }
             }
 
-            Some('"') => self.string().map(|x| Some(x)),
+            Some('"') => self.string().map(Some),
 
             Some(c) if c.is_ascii_digit() => {
                 Ok(self.number(c))

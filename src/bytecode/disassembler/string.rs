@@ -1,48 +1,6 @@
-use core::{fmt, panic};
-use std::{error::Error};
-
 use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER};
 
-pub trait Disassembler {
-    type Out;
-
-    fn disassemble(&mut self, code: &dyn AsRef<[u8]>) -> Self::Out;
-    fn disassemble_chunk(&mut self, chunk: &[u8]) -> Self::Out;
-}
-
-#[derive(Debug)]
-pub enum DisassembleError {
-    IOError(std::io::Error),
-    TryFromSliceError(std::array::TryFromSliceError),
-}
-
-impl fmt::Display for DisassembleError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
-    }
-}
-
-impl Error for DisassembleError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-
-    fn cause(&self) -> Option<&dyn Error> {
-        self.source()
-    }
-}
-
-impl From<std::io::Error> for DisassembleError {
-    fn from(err: std::io::Error) -> Self {
-        DisassembleError::IOError(err)
-    }
-}
-
-impl From<std::array::TryFromSliceError> for DisassembleError {
-    fn from(err: std::array::TryFromSliceError) -> Self {
-        DisassembleError::TryFromSliceError(err)
-    }
-}
+use super::{Disassembler, DisassembleError};
 
 pub struct StringDisassembler;
 

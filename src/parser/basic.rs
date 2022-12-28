@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 use log::debug;
 
-use crate::ast::{AbstractTree, Expression};
+use crate::ast::{AbstractTree, Expression, Statement};
 use super::Parser;
 use crate::lexer::token::{Token, TokenType};
 
@@ -88,6 +88,26 @@ impl<'a> BasicParser<'a> {
 
             tok = self.advance();
         }
+    }
+
+    fn statement(&mut self) -> Result<Statement, super::ParseError> {
+        debug!("read statement");
+        if let Some(_print_tok) = self.match_token([TokenType::Identifier(String::from("print"))]) {
+            return self.print_statement();
+        }
+        self.expression_statement()
+    }
+
+    fn print_statement(&mut self) -> Result<Statement, super::ParseError> {
+        let expression = self.expression()?;
+        self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
+        Ok(Statement::PrintStatement { expression, information: () })
+    }
+
+    fn expression_statement(&mut self) -> Result<Statement, super::ParseError> {
+        let expression = self.expression()?;
+        self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
+        Ok(Statement::ExpressionStatement { expression, information: () })
     }
 
     fn expression(&mut self) -> Result<Expression, super::ParseError> {
@@ -211,6 +231,6 @@ impl<'a> Parser for BasicParser<'a> {
     type Out = Result<AbstractTree, super::ParseError>;
 
     fn parse(mut self) -> Result<AbstractTree, super::ParseError> {
-        self.expression().map(|ex| AbstractTree::new(ex, ()))
+        self.statement().map(|stmt| AbstractTree::statement(stmt, ()))
     }
 }

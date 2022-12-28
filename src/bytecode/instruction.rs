@@ -6,6 +6,8 @@
 pub enum OpCode {
     RETURN,
     CONSTANT { offset: usize },
+    PUSH,
+    POP,
     ADD,
     SUBTRACT,
     MULTIPLY,
@@ -14,4 +16,6 @@ pub enum OpCode {
     EQ,
     GT,
     LT,
+
+    DEBUG_PRINT,
 }
