@@ -57,6 +57,9 @@ struct LocationData {
     tok_end: usize
 }
 
+// TODO:
+// MISSING &, |, ^
+
 #[derive(PartialEq, Debug, Clone)]
 pub enum TokenType {
     LeftParen, RightParen, LeftBrace, RightBrace,

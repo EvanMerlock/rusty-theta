@@ -9,6 +9,7 @@ pub struct BasicParser<'a> {
     tokens: Peekable<&'a mut dyn Iterator<Item = Token>>
 }
 
+// TODO: split up tokens that are operators into operator type by expression type.
 impl<'a> BasicParser<'a> {
     pub fn new(token_stream: &'a mut dyn Iterator<Item = Token>) -> BasicParser<'a> {
         BasicParser {

@@ -2,6 +2,7 @@ use std::io::Cursor;
 
 use log::{LevelFilter, debug};
 
+use crate::ast::transformers::typeck::TypeCk;
 use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
 use crate::bytecode::{BasicAssembler, Assembler, Disassembler, OpCode, Chunk};
 use crate::{vm::{VM}, build_chunk, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}};
@@ -59,7 +60,8 @@ impl Repl {
                 let mut token_stream = tokens.into_iter();
                 let parser = BasicParser::new(&mut token_stream);
                 let ast = parser.parse()?;
-                let chunk = ToByteCode::transform(&ast)?;
+                let type_check = TypeCk::transform(&ast)?;
+                let chunk = ToByteCode::transform(&type_check)?;
                 let chunks: Vec<Chunk> = vec![chunk];
                 {
                     let mut code = Box::new(Cursor::new(Vec::new()));

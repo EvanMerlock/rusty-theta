@@ -1,30 +1,32 @@
-use std::{fmt, error::Error};
+use std::{fmt::{self, Debug}, error::Error};
 
-use crate::ast::{AbstractTree, Expression};
+use super::{AugmentedAbstractTree, AugmentedExpression, typeck::TypeCkError};
 
-pub trait ASTTransformer {
+pub trait ASTTransformer<T> where T: Debug + PartialEq {
 
     type Out;
 
-    fn transform(tree: &AbstractTree) -> Result<Self::Out, TransformError>;
+    fn transform(tree: &AugmentedAbstractTree<T>) -> Result<Self::Out, TransformError>;
 
 }
 
-pub trait ASTVisitor {
+pub trait ASTVisitor<T> where T: Debug + PartialEq {
 
     type Out;
 
-    fn visit_expression(expr: &Expression) -> Result<Self::Out, TransformError>;
+    fn visit_expression(expr: &AugmentedExpression<T>) -> Result<Self::Out, TransformError>;
 }
 
 #[derive(Debug)]
 pub enum TransformError {
-
+    TypeCkError(TypeCkError),
 }
 
 impl fmt::Display for TransformError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        match self {
+            TransformError::TypeCkError(type_ck_err) => write!(f, "An error occured during type checking: {}", type_ck_err),
+        }
     }
 }
 
@@ -35,5 +37,11 @@ impl Error for TransformError {
 
     fn cause(&self) -> Option<&dyn Error> {
         self.source()
+    }
+}
+
+impl From<TypeCkError> for TransformError {
+    fn from(ck_error: TypeCkError) -> Self {
+        TransformError::TypeCkError(ck_error)
     }
 }

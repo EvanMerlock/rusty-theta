@@ -45,3 +45,14 @@ pub enum AugmentedExpression<T> where T: Debug + PartialEq {
         information: T
     },
 }
+
+impl<T: Debug + PartialEq> AugmentedExpression<T> {
+    pub fn information(&self) ->&T {
+        match self {
+            AugmentedExpression::Binary { left, operator, right, information } => information,
+            AugmentedExpression::Unary { operator, right, information } => information,
+            AugmentedExpression::Literal { literal, information } => information,
+            AugmentedExpression::Sequence { seq, information } => information,
+        }
+    }
+}
