@@ -101,7 +101,9 @@ impl ASTTerminator<TypeInformation> for ToByteCode {
     ) -> Result<Self::Out, super::TransformError> {
         match stmt {
             super::AugmentedStatement::ExpressionStatement { expression, information } => {
-                ToByteCode::visit_expression(expression)
+                let pop_chunk = build_chunk!(OpCode::POP);
+                let expr_chunk = ToByteCode::visit_expression(expression)?;
+                Ok(expr_chunk.merge_chunk(pop_chunk))
             },
             super::AugmentedStatement::PrintStatement { expression, information } => {
                 let print_chunk = build_chunk!(OpCode::DEBUG_PRINT);
