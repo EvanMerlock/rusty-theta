@@ -71,11 +71,17 @@ impl Disassembler for StringDisassembler {
             match chunk[offset] {
                 0x0 => { readout.push_str("Op: Return (0x0)\r\n"); offset += 1 },
                 0x1 => { readout.push_str(&format!("Op: Constant (0x1) with offset: {}\r\n", &chunk[offset+1])); offset += 2 },
-                0x2 => { readout.push_str("Op: Add (0x2)\r\n"); offset += 1 },
-                0x3 => { readout.push_str("Op: Sub (0x3)\r\n"); offset += 1 },
-                0x4 => { readout.push_str("Op: Mul (0x4)\r\n"); offset += 1 },
-                0x5 => { readout.push_str("Op: Div (0x5)\r\n"); offset += 1 },
-                0x6 => { readout.push_str("Op: Neg (0x6)\r\n"); offset += 1 },
+                0x2 => { readout.push_str("Op: Push (0x2)\r\n"); offset += 1 },
+                0x3 => { readout.push_str("Op: Pop (0x3)\r\n"); offset += 1 }
+                0x4 => { readout.push_str("Op: Add (0x4)\r\n"); offset += 1 },
+                0x5 => { readout.push_str("Op: Sub (0x5)\r\n"); offset += 1 },
+                0x6 => { readout.push_str("Op: Mul (0x6)\r\n"); offset += 1 },
+                0x7 => { readout.push_str("Op: Div (0x7)\r\n"); offset += 1 },
+                0x8 => { readout.push_str("Op: Neg (0x8)\r\n"); offset += 1 },
+                0x9 => { readout.push_str("Op: Eq (0x9)\r\n"); offset += 1 },
+                0xA => { readout.push_str("Op: GT (0xA)\r\n"); offset += 1 },
+                0xB => { readout.push_str("Op: LT (0xB)\r\n"); offset += 1 },
+                0xFF => { readout.push_str("Op: Print (0xFF)\r\n"); offset += 1 },
                 code => { readout.push_str(&format!("Op: Unknown ({:#x})\r\n", code)); offset += 1 }
             }
         }

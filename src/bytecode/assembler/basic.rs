@@ -48,19 +48,19 @@ impl<'a> Assembler for BasicAssembler<'a> {
                 match opcode {
                     OpCode::RETURN => self.output_file.write(&[0u8])?,
                     OpCode::CONSTANT { offset } => self.output_file.write(&[1u8, *offset as u8])?,
-                    OpCode::PUSH => todo!(),
-                    OpCode::POP => todo!(),
+                    OpCode::PUSH => self.output_file.write(&[2u8])?,
+                    OpCode::POP => self.output_file.write(&[3u8])?,
 
-                    OpCode::ADD => self.output_file.write(&[2u8])?,
-                    OpCode::SUBTRACT => self.output_file.write(&[3u8])?,
-                    OpCode::MULTIPLY => self.output_file.write(&[4u8])?,
-                    OpCode::DIVIDE => self.output_file.write(&[5u8])?,
-                    OpCode::NEGATE => self.output_file.write(&[6u8])?,
-                    OpCode::EQ => self.output_file.write(&[7u8])?,
-                    OpCode::GT => self.output_file.write(&[8u8])?,
-                    OpCode::LT => self.output_file.write(&[9u8])?,
+                    OpCode::ADD => self.output_file.write(&[4u8])?,
+                    OpCode::SUBTRACT => self.output_file.write(&[5u8])?,
+                    OpCode::MULTIPLY => self.output_file.write(&[6u8])?,
+                    OpCode::DIVIDE => self.output_file.write(&[7u8])?,
+                    OpCode::NEGATE => self.output_file.write(&[8u8])?,
+                    OpCode::EQ => self.output_file.write(&[9u8])?,
+                    OpCode::GT => self.output_file.write(&[0xAu8])?,
+                    OpCode::LT => self.output_file.write(&[0xBu8])?,
 
-                    OpCode::DEBUG_PRINT => todo!(),
+                    OpCode::DEBUG_PRINT => self.output_file.write(&[0xFFu8])?,
                 };
             }
         }

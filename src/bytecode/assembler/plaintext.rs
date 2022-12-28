@@ -37,14 +37,14 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
                     OpCode::PUSH => writeln!(self.output_file, "Op: Push (0x2)")?,
                     OpCode::POP => writeln!(self.output_file, "Op: Pop (0x3)")?,
 
-                    OpCode::ADD => writeln!(self.output_file, "Op: Add (0x2)")?,
-                    OpCode::SUBTRACT => writeln!(self.output_file, "Op: Sub (0x3)")?,
-                    OpCode::MULTIPLY => writeln!(self.output_file, "Op: Mul (0x4)")?,
-                    OpCode::DIVIDE => writeln!(self.output_file, "Op: Div (0x5)")?,
-                    OpCode::NEGATE => writeln!(self.output_file, "Op: Neg (0x6)")?,
-                    OpCode::EQ => writeln!(self.output_file, "Op: Equal (0x7)")?,
-                    OpCode::GT => writeln!(self.output_file, "Op: Greater Than (0x8)")?,
-                    OpCode::LT => writeln!(self.output_file, "Op: Less Than (0x9)")?,
+                    OpCode::ADD => writeln!(self.output_file, "Op: Add (0x4)")?,
+                    OpCode::SUBTRACT => writeln!(self.output_file, "Op: Sub (0x5)")?,
+                    OpCode::MULTIPLY => writeln!(self.output_file, "Op: Mul (0x6)")?,
+                    OpCode::DIVIDE => writeln!(self.output_file, "Op: Div (0x7)")?,
+                    OpCode::NEGATE => writeln!(self.output_file, "Op: Neg (0x8)")?,
+                    OpCode::EQ => writeln!(self.output_file, "Op: Equal (0x9)")?,
+                    OpCode::GT => writeln!(self.output_file, "Op: Greater Than (0xA)")?,
+                    OpCode::LT => writeln!(self.output_file, "Op: Less Than (0xB)")?,
 
                     OpCode::DEBUG_PRINT => writeln!(self.output_file, "Op: DebugPrint (0xFF)")?,
                 };

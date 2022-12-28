@@ -108,8 +108,18 @@ impl Disassembler for VM {
                     self.stack.push(self.constants[chunk[offset+1] as usize].clone()); 
                     offset += 2 
                 },
-                0x2 => {
-                    debug!("Op: Add (0x2)");
+                0x2 => { 
+                    debug!("Op: Push (0x2)"); 
+                    todo!();
+                    offset += 1 
+                },
+                0x3 => { 
+                    debug!("Op: Pop (0x3)"); 
+                    self.stack.pop(); 
+                    offset += 1 
+                },
+                0x4 => {
+                    debug!("Op: Add (0x4)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -120,8 +130,8 @@ impl Disassembler for VM {
                     };
                     offset += 1
                 },
-                0x3 => {
-                    debug!("Op: Sub (0x3)");
+                0x5 => {
+                    debug!("Op: Sub (0x5)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -132,8 +142,8 @@ impl Disassembler for VM {
                     };
                     offset += 1
                 },
-                0x4 => {
-                    debug!("Op: Mul (0x3)");
+                0x6 => {
+                    debug!("Op: Mul (0x6)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -144,8 +154,8 @@ impl Disassembler for VM {
                     };
                     offset += 1
                 },
-                0x5 => {
-                    debug!("Op: Div (0x5)");
+                0x7 => {
+                    debug!("Op: Div (0x7)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -156,8 +166,8 @@ impl Disassembler for VM {
                     };
                     offset += 1
                 },
-                0x6 => {
-                    debug!("Op: Neg (0x6)");
+                0x8 => {
+                    debug!("Op: Neg (0x8)");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
                     match left {
@@ -167,8 +177,8 @@ impl Disassembler for VM {
                     };
                     offset += 1
                 },
-                0x7 => {
-                    debug!("Op: Equal (0x7)");
+                0x9 => {
+                    debug!("Op: Equal (0x9)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -180,8 +190,8 @@ impl Disassembler for VM {
                     };
                     offset += 1
                 },
-                0x8 => {
-                    debug!("Op: GT (0x8)");
+                0xA => {
+                    debug!("Op: GT (0xA)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -192,8 +202,8 @@ impl Disassembler for VM {
                     };
                     offset += 1
                 },
-                0x9 => {
-                    debug!("Op: LT (0x9)");
+                0xB => {
+                    debug!("Op: LT (0xB)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
                     let left = self.stack.pop().expect("failed to grab value off stack");
 
@@ -202,6 +212,11 @@ impl Disassembler for VM {
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l<r)),
                         _ => panic!("invalid operands"),
                     };
+                    offset += 1
+                },
+                0xFF => { 
+                    debug!("Op: Print (0xFF)"); 
+                    println!("{:?}", self.stack.pop()); 
                     offset += 1
                 },
                 code => { 
