@@ -2,7 +2,7 @@ use crate::{build_chunk, lexer::token};
 use crate::bytecode::{Chunk, OpCode, ThetaValue};
 use crate::ast::{AbstractTree, Expression};
 
-use super::{ASTTransformer, ASTVisitor};
+use super::{ASTTransformer, ASTVisitor, InnerAbstractTree};
 
 pub struct ToByteCode;
 
@@ -10,10 +10,10 @@ impl ASTTransformer for ToByteCode {
 
     type Out = Chunk;
 
-    fn transform(tree: AbstractTree) -> Result<Chunk, super::TransformError> {
-           Ok(match tree {
-                AbstractTree::Expression(exp) => {
-                    ToByteCode::visit_expression(exp)?
+    fn transform(tree: &AbstractTree) -> Result<Chunk, super::TransformError> {
+           Ok(match tree.inner() {
+                InnerAbstractTree::Expression(exp) => {
+                    ToByteCode::visit_expression(&exp.0)?
                 }
            })
     }
@@ -22,11 +22,11 @@ impl ASTTransformer for ToByteCode {
 impl ASTVisitor for ToByteCode {
     type Out = Chunk;
 
-    fn visit_expression(expr: Expression) -> Result<Self::Out, super::TransformError> {
+    fn visit_expression(expr: &Expression) -> Result<Self::Out, super::TransformError> {
         Ok(match expr {
-            Expression::Binary { left, operator, right } => {
-                let left_val = ToByteCode::visit_expression(*left)?;
-                let right_val = ToByteCode::visit_expression(*right)?;
+            Expression::Binary { left, operator, right , ..} => {
+                let left_val = ToByteCode::visit_expression(left)?;
+                let right_val = ToByteCode::visit_expression(right)?;
                 let res_chunk = left_val.merge_chunk(right_val);
                 let op_chunk = match operator.ty() {
                     token::TokenType::Plus => build_chunk!(OpCode::ADD),
@@ -43,16 +43,16 @@ impl ASTVisitor for ToByteCode {
                 };
                 res_chunk.merge_chunk(op_chunk)
             },
-            Expression::Unary { operator, right } => {
-                let right_val = ToByteCode::visit_expression(*right)?;
+            Expression::Unary { operator, right, .. } => {
+                let right_val = ToByteCode::visit_expression(right)?;
                 let op_chunk = match operator.ty() {
                     token::TokenType::Minus => build_chunk!(OpCode::NEGATE),
                     _ => panic!("invalid token in binary precedence when visiting for bytecode transform")
                 };
                 right_val.merge_chunk(op_chunk)
             },
-            Expression::Literal(lit_token) => {
-                match lit_token.ty() {
+            Expression::Literal { literal, .. } => {
+                match literal.ty() {
                     token::TokenType::Integer(i) => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Int(i as i64)),
                     token::TokenType::Float(f) => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Double(f as f64)),
                     token::TokenType::True => build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Bool(true)),
@@ -61,9 +61,9 @@ impl ASTVisitor for ToByteCode {
                     _ => panic!("invalid token in literal location when visiting for bytecode transform"),
                 }
             },
-            Expression::Sequence(exprs) => {
-                exprs
-                    .into_iter()
+            Expression::Sequence { seq, .. } => {
+                seq
+                    .iter()
                     // TODO: this needs to fail safely
                     .map(|expr| ToByteCode::visit_expression(expr).expect("could not map ToByteCode visit expression."))
                     .reduce(|acc, new| acc.merge_chunk(new))

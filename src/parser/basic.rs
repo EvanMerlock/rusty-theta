@@ -104,6 +104,7 @@ impl<'a> BasicParser<'a> {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
+                information: (),
             };
         };
         
@@ -120,6 +121,7 @@ impl<'a> BasicParser<'a> {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
+                information: (),
             };
         }
 
@@ -135,7 +137,8 @@ impl<'a> BasicParser<'a> {
             lhs = Expression::Binary {
                 left: Box::new(lhs),
                 operator: oper,
-                right: Box::new(rhs)
+                right: Box::new(rhs),
+                information: (),
             };
         }
 
@@ -151,7 +154,8 @@ impl<'a> BasicParser<'a> {
             lhs = Expression::Binary {
                 left: Box::new(lhs),
                 operator: oper,
-                right: Box::new(rhs)
+                right: Box::new(rhs),
+                information: ()
             };
         }
 
@@ -163,7 +167,8 @@ impl<'a> BasicParser<'a> {
         if let Some(oper) = self.match_token([TokenType::Bang, TokenType::Minus]) {
             self.unary().map(|rhs| Expression::Unary {
                 operator: oper,
-                right: Box::new(rhs)
+                right: Box::new(rhs),
+                information: ()
             })
         } else {
             self.primary()
@@ -186,13 +191,16 @@ impl<'a> BasicParser<'a> {
 
             self.consume(TokenType::RightParen, "Expected ')' after expression.")?;
             
-            Ok(Expression::Sequence(seq_expressions))
+            Ok(Expression::Sequence {
+                seq: seq_expressions,
+                information: (),
+            })
         } else {
             // needs to match literals only
             self
                 .advance()
                 .filter(|tk| tk.ty().is_literal())
-                .map(Expression::Literal)
+                .map(|tk| Expression::Literal { literal: tk, information: () })
                 .ok_or_else(|| super::ParseError::from_other("Unexpected EOS"))
         }
     }
@@ -202,6 +210,6 @@ impl<'a> Parser for BasicParser<'a> {
     type Out = Result<AbstractTree, super::ParseError>;
 
     fn parse(mut self) -> Result<AbstractTree, super::ParseError> {
-        self.expression().map(AbstractTree::new)
+        self.expression().map(|ex| AbstractTree::new(ex, ()))
     }
 }

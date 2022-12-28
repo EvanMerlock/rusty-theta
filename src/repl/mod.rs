@@ -59,7 +59,7 @@ impl Repl {
                 let mut token_stream = tokens.into_iter();
                 let parser = BasicParser::new(&mut token_stream);
                 let ast = parser.parse()?;
-                let chunk = ToByteCode::transform(ast)?;
+                let chunk = ToByteCode::transform(&ast)?;
                 let chunks: Vec<Chunk> = vec![chunk];
                 {
                     let mut code = Box::new(Cursor::new(Vec::new()));

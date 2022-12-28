@@ -5,3 +5,6 @@ mod error;
 pub mod repl;
 pub mod ast;
 pub mod bytecode;
+
+#[cfg(test)]
+pub(crate) mod tests;

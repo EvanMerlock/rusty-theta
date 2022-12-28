@@ -7,7 +7,7 @@ impl ASTTransformer for TypeCk {
 
     type Out = ();
 
-    fn transform(tree: AbstractTree) -> Result<Self::Out, super::TransformError> {
+    fn transform(tree: &AbstractTree) -> Result<Self::Out, super::TransformError> {
         todo!()
     }
 
