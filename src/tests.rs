@@ -27,3 +27,10 @@ macro_rules! binary {
         Expression::Binary { left: $left, operator: $oper, right: $right, information: $info }
     }
 }
+
+#[macro_export]
+macro_rules! statement {
+    (Expr: $stmt:expr) => {
+        Statement::ExpressionStatement { expression: $stmt, information: () }
+    };
+}
