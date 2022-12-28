@@ -175,6 +175,15 @@ impl ASTVisitor<()> for TypeCk {
     }
 
     fn visit_statement(stmt: &super::AugmentedStatement<()>) -> Result<super::AugmentedStatement<Self::InfoOut>, TransformError> {
-        todo!()
+        match stmt {
+            super::AugmentedStatement::ExpressionStatement { expression, information } => {
+                let aug_expr = TypeCk::visit_expression(expression)?;
+                Ok(super::AugmentedStatement::ExpressionStatement { expression: aug_expr, information: TypeInformation::None })
+            },
+            super::AugmentedStatement::PrintStatement { expression, information } => {
+                let aug_expr = TypeCk::visit_expression(expression)?;
+                Ok(super::AugmentedStatement::PrintStatement { expression: aug_expr, information: TypeInformation::None })
+            },
+        }
     }
 }
