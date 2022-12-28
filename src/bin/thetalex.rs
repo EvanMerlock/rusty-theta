@@ -1,6 +1,7 @@
 use clap::{Parser as ClapParser};
 use utf8_chars::BufReadCharsExt;
 use theta_lang::lexer::{Lexer, BasicLexer};
+use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 
@@ -15,7 +16,7 @@ struct ThetaLexOptions {
     verbose: i32,
 }
 
-fn main() -> Result<(), std::io::Error> {
+fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
     let options = ThetaLexOptions::parse();
 
@@ -33,7 +34,7 @@ fn main() -> Result<(), std::io::Error> {
     let mut iter = in_file.chars().map(|x| x.unwrap());
     let lexer = BasicLexer::new(&mut iter);
 
-    let tokens = lexer.lex();
+    let tokens = lexer.lex()?;
 
     let mut line = 1;
     for token in tokens {

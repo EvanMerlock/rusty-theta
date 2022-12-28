@@ -56,7 +56,7 @@ impl Repl {
         
                 let mut chars = valid_line.chars();
                 let lexer = BasicLexer::new(&mut chars);
-                let tokens = lexer.lex();
+                let tokens = lexer.lex()?;
                 let mut token_stream = tokens.into_iter();
                 let parser = BasicParser::new(&mut token_stream);
                 let ast = parser.parse()?;

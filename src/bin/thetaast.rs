@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut iter = in_file.chars().map(|x| x.unwrap());
     let lexer = BasicLexer::new(&mut iter);
 
-    let tokens = lexer.lex();
+    let tokens = lexer.lex()?;
     let mut tok_stream = tokens.into_iter();
 
     let parser = BasicParser::new(&mut tok_stream);

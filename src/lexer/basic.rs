@@ -1,6 +1,29 @@
-use std::iter::Peekable;
+use std::{iter::Peekable, error::Error, fmt::Display};
 
 use super::*;
+
+#[derive(Debug)]
+pub enum LexerError {
+    UnexpectedEof,
+    UnexpectedInput(char),
+    UnterminatedString(usize, usize),
+}
+
+impl Error for LexerError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+}
+
+impl Display for LexerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LexerError::UnexpectedEof => write!(f, "Unexpected EOF encountered"),
+            LexerError::UnexpectedInput(c) => write!(f, "Unexpected input {}", c),
+            LexerError::UnterminatedString(line_num, _) => write!(f, "Unterminated string beginning on line {}", line_num),
+        }
+    }
+}
 
 pub struct BasicLexer<'a> {
     chars: Peekable<&'a mut dyn Iterator<Item = char>>,
@@ -23,9 +46,10 @@ impl<'a> BasicLexer<'a> {
         }
     }
 
-    fn string(&mut self) -> Option<token::Token> {
+    fn string(&mut self) -> Result<token::Token, LexerError> {
 
         let mut buffer = String::new();
+        let location = (self.line_num, self.current);
 
         while self.peek().map(|opt| opt != '"').unwrap_or(false) && !self.is_at_end() {
             if self.peek().map(|opt| opt == '\n').unwrap_or(false) {
@@ -38,12 +62,12 @@ impl<'a> BasicLexer<'a> {
         }
 
         if self.is_at_end() {
-            panic!("Unterminated string");
+            return Err(LexerError::UnterminatedString(location.0, location.1))
         }
 
         self.advance();
 
-        Some(self.generate_token(token::TokenType::Str(buffer)))
+        Ok(self.generate_token(token::TokenType::Str(buffer)))
     }
 
     fn number(&mut self, c: char) -> Option<token::Token> {
@@ -141,77 +165,78 @@ impl<'a> BasicLexer<'a> {
 impl<'a> Lexer for BasicLexer<'a> {
 
     type Out = Vec<token::Token>;
+    type Error = LexerError;
 
-    fn scan_token(&mut self) -> Option<token::Token> {
+    fn scan_token(&mut self) -> Result<Option<token::Token>, LexerError> {
         match self.advance() {
             None => { 
-                Some(self.generate_token(token::TokenType::Eof))
+                Ok(Some(self.generate_token(token::TokenType::Eof)))
             },
 
-            Some(' ') | Some('\r') | Some('\t') => None,
+            Some(' ') | Some('\r') | Some('\t') => Ok(None),
             Some('\n') => {
                 self.line_num += 1; 
-                None
+                Ok(None)
             },
 
             Some('*') if self.comment_level > 0 => {
                 if self.match_char('/') {
                     self.dec_comment_level();
                 }
-                None
+                Ok(None)
             },
-            Some(_) if self.comment_level > 0 => None,
+            Some(_) if self.comment_level > 0 => Ok(None),
 
-            Some('(') => Some(self.generate_token(token::TokenType::LeftParen)),
-            Some(')') => Some(self.generate_token(token::TokenType::RightParen)),
-            Some('[') => Some(self.generate_token(token::TokenType::LeftBrace)),
-            Some(']') => Some(self.generate_token(token::TokenType::RightBrace)),
-            Some('{') => Some(self.generate_token(token::TokenType::LeftBrace)),
-            Some('}') => Some(self.generate_token(token::TokenType::RightBrace)),
-            Some(',') => Some(self.generate_token(token::TokenType::Comma)),
-            Some('.') => Some(self.generate_token(token::TokenType::Dot)),
-            Some('+') => Some(self.generate_token(token::TokenType::Plus)),
-            Some(';') => Some(self.generate_token(token::TokenType::Semicolon)),
-            Some(':') => Some(self.generate_token(token::TokenType::Colon)),
-            Some('*') => Some(self.generate_token(token::TokenType::Star)),
+            Some('(') => Ok(Some(self.generate_token(token::TokenType::LeftParen))),
+            Some(')') => Ok(Some(self.generate_token(token::TokenType::RightParen))),
+            Some('[') => Ok(Some(self.generate_token(token::TokenType::LeftBrace))),
+            Some(']') => Ok(Some(self.generate_token(token::TokenType::RightBrace))),
+            Some('{') => Ok(Some(self.generate_token(token::TokenType::LeftBrace))),
+            Some('}') => Ok(Some(self.generate_token(token::TokenType::RightBrace))),
+            Some(',') => Ok(Some(self.generate_token(token::TokenType::Comma))),
+            Some('.') => Ok(Some(self.generate_token(token::TokenType::Dot))),
+            Some('+') => Ok(Some(self.generate_token(token::TokenType::Plus))),
+            Some(';') => Ok(Some(self.generate_token(token::TokenType::Semicolon))),
+            Some(':') => Ok(Some(self.generate_token(token::TokenType::Colon))),
+            Some('*') => Ok(Some(self.generate_token(token::TokenType::Star))),
 
             Some('-') => {
                 if self.match_char('>') {
-                    Some(self.generate_token(token::TokenType::Arrow))
+                    Ok(Some(self.generate_token(token::TokenType::Arrow)))
                 } else {
-                    Some(self.generate_token(token::TokenType::Minus)) 
+                    Ok(Some(self.generate_token(token::TokenType::Minus)))
                 }
             }
 
             Some('!') => {
                 if self.match_char('=') {
-                    Some(self.generate_token(token::TokenType::BangEqual))
+                    Ok(Some(self.generate_token(token::TokenType::BangEqual)))
                 } else {
-                    Some(self.generate_token(token::TokenType::Bang))
+                    Ok(Some(self.generate_token(token::TokenType::Bang)))
                 }
             }
 
             Some('=') => {
                 if self.match_char('=') {
-                    Some(self.generate_token(token::TokenType::EqualEqual))
+                    Ok(Some(self.generate_token(token::TokenType::EqualEqual)))
                 } else {
-                    Some(self.generate_token(token::TokenType::Equal))
+                    Ok(Some(self.generate_token(token::TokenType::Equal)))
                 }
             }
 
             Some('<') => {
                 if self.match_char('=') {
-                    Some(self.generate_token(token::TokenType::LessEqual))
+                    Ok(Some(self.generate_token(token::TokenType::LessEqual)))
                 } else {
-                    Some(self.generate_token(token::TokenType::Less))
+                    Ok(Some(self.generate_token(token::TokenType::Less)))
                 }
             }
 
             Some('>') => {
                 if self.match_char('=') {
-                    Some(self.generate_token(token::TokenType::GreaterEqual))
+                    Ok(Some(self.generate_token(token::TokenType::GreaterEqual)))
                 } else {
-                    Some(self.generate_token(token::TokenType::Greater))
+                    Ok(Some(self.generate_token(token::TokenType::Greater)))
                 }
             }
 
@@ -220,35 +245,36 @@ impl<'a> Lexer for BasicLexer<'a> {
                     while self.peek() != Some('\n') && self.peek().is_some() {
                         let _ = self.advance();
                     }
-                    None
+                    Ok(None)
                 } else if self.match_char('*') {
                     self.inc_comment_level();
-                    None
+                    Ok(None)
                 } else {
-                    Some(self.generate_token(token::TokenType::Slash))
+                    Ok(Some(self.generate_token(token::TokenType::Slash)))
                 }
             }
 
-            Some('"') => self.string(),
+            Some('"') => self.string().map(|x| Some(x)),
 
             Some(c) if c.is_ascii_digit() => {
-                self.number(c)
+                Ok(self.number(c))
             },
 
             Some(c) if c.is_alphabetic() => {
-                self.identifier(c)
+                Ok(self.identifier(c))
             }
 
-            _ => panic!("Bad input, remove later!"),
+            Some(c) => Err(LexerError::UnexpectedInput(c)),
+            None => Err(LexerError::UnexpectedEof),
         }
     }
 
-    fn lex(mut self) -> Vec<token::Token> {
+    fn lex(mut self) -> Result<Vec<token::Token>, LexerError> {
 
         let mut tokens = Vec::new();
 
         while !self.is_at_end() {
-            let tok = self.scan_token();
+            let tok = self.scan_token()?;
             if let Some(t) = tok {
                 tokens.push(t)
             }
@@ -257,6 +283,6 @@ impl<'a> Lexer for BasicLexer<'a> {
 
         tokens.push(self.generate_token(token::TokenType::Eof));
 
-        tokens
+        Ok(tokens)
     }
 }

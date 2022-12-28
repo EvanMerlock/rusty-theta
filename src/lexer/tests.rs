@@ -11,7 +11,7 @@ macro_rules! define_single_char_test {
 
             let lexer = BasicLexer::new(&mut iter);
 
-            assert_eq!(lexer.lex(), vec![Token::new(1, 0, 1, $tokenty), Token::new(1, 1, 1, TokenType::Eof)])
+            assert_eq!(lexer.lex().expect("should not fail"), vec![Token::new(1, 0, 1, $tokenty), Token::new(1, 1, 1, TokenType::Eof)])
         }
     };
 }
@@ -26,7 +26,7 @@ macro_rules! define_complex_char_test {
 
             let lexer = BasicLexer::new(&mut iter);
 
-            assert_eq!(lexer.lex(), vec![Token::new(1, 0, $toklen, $tokenty), Token::new(1, $toklen, $toklen, TokenType::Eof)])
+            assert_eq!(lexer.lex().expect("should not fail"), vec![Token::new(1, 0, $toklen, $tokenty), Token::new(1, $toklen, $toklen, TokenType::Eof)])
         }
     };
 }
@@ -76,7 +76,7 @@ fn basic_lexer_recog_line_comment() {
 
     let lexer = BasicLexer::new(&mut iter);
 
-    assert_eq!(lexer.lex(), vec![Token::new(1, 25, 25, TokenType::Eof)])
+    assert_eq!(lexer.lex().expect("should not fail"), vec![Token::new(1, 25, 25, TokenType::Eof)])
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn basic_lexer_recog_block_comment() {
 
     let lexer = BasicLexer::new(&mut iter);
 
-    assert_eq!(lexer.lex(), vec![Token::new(3, 37, 37, TokenType::Eof)])
+    assert_eq!(lexer.lex().expect("should not fail"), vec![Token::new(3, 37, 37, TokenType::Eof)])
 }
 
 #[test]
@@ -100,7 +100,7 @@ fn basic_lexer_recog_integer() {
 
     let lexer = BasicLexer::new(&mut iter);
 
-    assert_eq!(lexer.lex(), vec![Token::new(1, 0, 3, TokenType::Integer(120)), Token::new(1, 3, 3, TokenType::Eof)])
+    assert_eq!(lexer.lex().expect("should not fail"), vec![Token::new(1, 0, 3, TokenType::Integer(120)), Token::new(1, 3, 3, TokenType::Eof)])
 }
 
 #[test]
@@ -111,7 +111,7 @@ fn basic_lexer_recog_float() {
 
     let lexer = BasicLexer::new(&mut iter);
 
-    assert_eq!(lexer.lex(), vec![Token::new(1, 0, 3, TokenType::Float(1.0)), Token::new(1, 3, 3, TokenType::Eof)])
+    assert_eq!(lexer.lex().expect("should not fail"), vec![Token::new(1, 0, 3, TokenType::Float(1.0)), Token::new(1, 3, 3, TokenType::Eof)])
 }
 
 #[test]
@@ -122,7 +122,7 @@ fn basic_lexer_not_recog_float_leading_period() {
 
     let lexer = BasicLexer::new(&mut iter);
 
-    assert_eq!(lexer.lex(), 
+    assert_eq!(lexer.lex().expect("should not fail"), 
         vec![
             Token::new(1, 0, 1, TokenType::Dot), 
             Token::new(1, 1, 2, TokenType::Integer(1)), 
@@ -138,7 +138,7 @@ fn basic_lexer_recog_float_trailing_dot() {
 
     let lexer = BasicLexer::new(&mut iter);
 
-    assert_eq!(lexer.lex(), 
+    assert_eq!(lexer.lex().expect("should not fail"), 
         vec![ 
             Token::new(1, 0, 2, TokenType::Float(1.0)), 
             Token::new(1, 2, 2, TokenType::Eof)

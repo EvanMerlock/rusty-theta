@@ -4,12 +4,15 @@ mod tests;
 pub(crate) mod token;
 mod basic;
 
+use std::error::Error;
+
 pub use self::basic::*;
 
 pub trait Lexer {
 
     type Out;
+    type Error: Error;
 
-    fn lex(self) -> Self::Out;
-    fn scan_token(&mut self) -> Option<token::Token>;
+    fn lex(self) -> Result<Self::Out, Self::Error>;
+    fn scan_token(&mut self) -> Result<Option<token::Token>, Self::Error>;
 }
