@@ -1,10 +1,13 @@
+use std::rc::Rc;
+
 use log::debug;
 
-use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError};
+use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER};
 
 pub struct VM {
     stack: Vec<ThetaValue>,
     constants: Vec<ThetaValue>,
+    heap: Vec<Rc<ThetaHeapValue>>,
 }
 
 impl VM {
@@ -12,6 +15,7 @@ impl VM {
         VM {
             stack: Vec::new(),
             constants: Vec::new(),
+            heap: Vec::new(),
         }
     }
 
@@ -21,6 +25,10 @@ impl VM {
 
     pub fn constants(&self) -> &Vec<ThetaValue> {
         &self.constants
+    }
+
+    pub fn heap(&self) -> &Vec<Rc<ThetaHeapValue>> {
+        &self.heap
     }
 
     pub fn clear_const_pool(&mut self) {
@@ -89,6 +97,20 @@ impl Disassembler for VM {
                     debug!("bool found in constant pool: {}", bol);
                     self.constants.push(ThetaValue::Bool(bol));              
                     offset += 1;
+                },
+                sli if sli == STRING_MARKER => {
+                    offset += 2;
+                    let len_bytes: [u8; 8] = chunk[offset..offset+8].try_into()?;
+                    let len = usize::from_le_bytes(len_bytes);
+                    offset += 8;
+                    let in_str = &chunk[offset..offset+len];
+                    let mut bytes = Vec::new();
+                    bytes.extend_from_slice(in_str);
+                    let read_str = String::from_utf8(bytes)?;
+                    let hv = Rc::new(ThetaHeapValue::Str(read_str));
+                    offset += len;
+                    self.heap.push(hv.clone());
+                    self.constants.push(ThetaValue::HeapValue(hv));
                 }
                 _ => panic!("invalid marker found in chunk"),
             }
@@ -126,6 +148,17 @@ impl Disassembler for VM {
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l+r)),
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Int(l+r)),
+                        (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
+                            match (&*l, &*r) {
+                                (&ThetaHeapValue::Str(ref ls), &ThetaHeapValue::Str(ref rs)) => {
+                                    let new = ls.clone() + rs;
+                                    let thv = Rc::new(ThetaHeapValue::Str(new));
+                                    let stack_val = ThetaValue::HeapValue(thv.clone());
+                                    self.heap.push(thv);
+                                    self.stack.push(stack_val);
+                                },
+                            }
+                        }
                         _ => panic!("invalid operands"),
                     };
                     offset += 1
@@ -186,6 +219,11 @@ impl Disassembler for VM {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l==r)),
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l==r)),
                         (ThetaValue::Bool(l), ThetaValue::Bool(r)) => self.stack.push(ThetaValue::Bool(l==r)),
+                        (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
+                            match (&*l, &*r) {
+                                (&ThetaHeapValue::Str(ref ls), &ThetaHeapValue::Str(ref rs)) => self.stack.push(ThetaValue::Bool(ls==rs)),
+                            }
+                        }
                         _ => panic!("invalid operands"),
                     };
                     offset += 1
@@ -198,6 +236,11 @@ impl Disassembler for VM {
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l>r)),
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l>r)),
+                        (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
+                            match (&*l, &*r) {
+                                (&ThetaHeapValue::Str(ref ls), &ThetaHeapValue::Str(ref rs)) => self.stack.push(ThetaValue::Bool(ls>rs)),
+                            }
+                        }
                         _ => panic!("invalid operands"),
                     };
                     offset += 1
@@ -210,6 +253,11 @@ impl Disassembler for VM {
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l<r)),
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l<r)),
+                        (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
+                            match (&*l, &*r) {
+                                (&ThetaHeapValue::Str(ref ls), &ThetaHeapValue::Str(ref rs)) => self.stack.push(ThetaValue::Bool(ls<rs)),
+                            }
+                        }
                         _ => panic!("invalid operands"),
                     };
                     offset += 1

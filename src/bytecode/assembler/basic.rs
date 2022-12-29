@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::bytecode::{Chunk, CHUNK_HEADER, OpCode, CONSTANT_POOL_HEADER, ThetaValue, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER};
+use crate::bytecode::{Chunk, CHUNK_HEADER, OpCode, CONSTANT_POOL_HEADER, ThetaValue, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER, ThetaHeapValue, STRING_MARKER};
 
 use super::{Assembler, AssembleError};
 
@@ -39,6 +39,19 @@ impl<'a> Assembler for BasicAssembler<'a> {
                     ThetaValue::Bool(b) => {
                         self.output_file.write_all(BOOL_MARKER)?;
                         self.output_file.write_all(&([(*b) as u8]))?;
+                    },
+                    ThetaValue::HeapValue(b) => {
+                        // ??? the box really screws stuff up here. we will most likely want to move to raw heap pointers
+                        // and enter the realm of... UNSAFE RUST!!!!!!!
+                        match &**b {
+                            ThetaHeapValue::Str(s) => {
+                                self.output_file.write_all(STRING_MARKER)?;
+                                let length = s.len();
+                                self.output_file.write_all(&length.to_le_bytes())?;
+                                self.output_file.write_all(s.as_bytes())?;
+                            },
+                        }                        
+                        // we will need to care about certain values
                     },
                 };
             }

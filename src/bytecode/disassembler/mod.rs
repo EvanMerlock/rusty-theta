@@ -15,6 +15,7 @@ pub trait Disassembler {
 pub enum DisassembleError {
     IOError(std::io::Error),
     TryFromSliceError(std::array::TryFromSliceError),
+    Utf8Error(std::string::FromUtf8Error),
 }
 
 impl fmt::Display for DisassembleError {
@@ -42,5 +43,11 @@ impl From<std::io::Error> for DisassembleError {
 impl From<std::array::TryFromSliceError> for DisassembleError {
     fn from(err: std::array::TryFromSliceError) -> Self {
         DisassembleError::TryFromSliceError(err)
+    }
+}
+
+impl From<std::string::FromUtf8Error> for DisassembleError {
+    fn from(e: std::string::FromUtf8Error) -> Self {
+        DisassembleError::Utf8Error(e)
     }
 }

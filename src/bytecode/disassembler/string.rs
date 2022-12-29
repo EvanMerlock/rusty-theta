@@ -1,4 +1,4 @@
-use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER};
+use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER, STRING_MARKER};
 
 use super::{Disassembler, DisassembleError};
 
@@ -60,6 +60,18 @@ impl Disassembler for StringDisassembler {
                     let bol = bol == [1u8];
                     readout.push_str(&format!("Constant: {}\r\n", bol));
                     offset += 1;
+                },
+                sli if sli == STRING_MARKER => {
+                    offset += 2;
+                    let len_bytes: [u8; 8] = chunk[offset..offset+8].try_into()?;
+                    let len = usize::from_le_bytes(len_bytes);
+                    offset += 8;
+                    let in_str = &chunk[offset..offset+len];
+                    let mut bytes = Vec::new();
+                    bytes.extend_from_slice(in_str);
+                    let read_str = String::from_utf8(bytes)?;
+                    offset += len;
+                    readout.push_str(&format!("Constant: {}\r\n", read_str));
                 }
                 _ => panic!("invalid marker found in chunk"),
             }

@@ -1,5 +1,7 @@
 
-use crate::bytecode::{Chunk, OpCode, ThetaValue};
+use std::rc::Rc;
+
+use crate::bytecode::{Chunk, OpCode, ThetaValue, ThetaHeapValue};
 use crate::{build_chunk, lexer::token};
 
 use super::typeck::TypeInformation;
@@ -78,7 +80,9 @@ impl ASTTerminator<TypeInformation> for ToByteCode {
                 token::TokenType::False => {
                     build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::Bool(false))
                 }
-                token::TokenType::Str(s) => todo!(),
+                token::TokenType::Str(s) => {
+                    build_chunk!(OpCode::CONSTANT { offset: 0 }; ThetaValue::HeapValue(Rc::new(ThetaHeapValue::Str(s))))
+                },
                 _ => {
                     panic!("invalid token in literal location when visiting for bytecode transform")
                 }

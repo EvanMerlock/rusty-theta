@@ -26,7 +26,7 @@ impl Repl {
     pub fn line(&mut self, valid_line: String) -> Result<ReplStatus, Box<dyn std::error::Error>> {
                 // CONVERT LINE TO CHUNKS
                 if valid_line.starts_with("--") && log::max_level() == LevelFilter::Debug {
-                    match valid_line.as_str() {
+                    match valid_line.as_str().trim_end() {
                         "--stack" => {
                             debug!("Stack: {:?}", self.machine.stack());
                         },
@@ -46,6 +46,9 @@ impl Repl {
                         "--constants" => {
                             debug!("Constants: {:?}", self.machine.constants());
                         },
+                        "--heap" => {
+                            debug!("Heap: {:?}", self.machine.heap());
+                        }
                         "--quit" => {
                             return Ok(ReplStatus::ReplTerminate);
                         }
