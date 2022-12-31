@@ -6,7 +6,10 @@ mod basic;
 
 use std::error::Error;
 
+use crate::parser::ParseError;
+
 pub use self::basic::*;
+use self::token::Token;
 
 pub trait Lexer {
 

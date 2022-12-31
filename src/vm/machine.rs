@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, collections::HashMap};
 
 use log::debug;
 
@@ -7,6 +7,7 @@ use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MAR
 pub struct VM {
     stack: Vec<ThetaValue>,
     constants: Vec<ThetaValue>,
+    globals: HashMap<String, ThetaValue>,
     heap: Vec<Rc<ThetaHeapValue>>,
 }
 
@@ -15,6 +16,7 @@ impl VM {
         VM {
             stack: Vec::new(),
             constants: Vec::new(),
+            globals: HashMap::new(),
             heap: Vec::new(),
         }
     }
@@ -29,6 +31,10 @@ impl VM {
 
     pub fn heap(&self) -> &Vec<Rc<ThetaHeapValue>> {
         &self.heap
+    }
+
+    pub fn globals(&self) -> &HashMap<String, ThetaValue> {
+        &self.globals
     }
 
     pub fn clear_const_pool(&mut self) {
@@ -107,6 +113,7 @@ impl Disassembler for VM {
                     let mut bytes = Vec::new();
                     bytes.extend_from_slice(in_str);
                     let read_str = String::from_utf8(bytes)?;
+                    debug!("str found in constant pool: {}", read_str);
                     let hv = Rc::new(ThetaHeapValue::Str(read_str));
                     offset += len;
                     self.heap.push(hv.clone());
@@ -115,6 +122,8 @@ impl Disassembler for VM {
                 _ => panic!("invalid marker found in chunk"),
             }
         }
+
+        debug!("-- BEGIN INSTRUCTIONS --");
         
 
         while offset < chunk.len() {
@@ -261,6 +270,39 @@ impl Disassembler for VM {
                         _ => panic!("invalid operands"),
                     };
                     offset += 1
+                },
+                0xC0 => { 
+                    debug!("Op: Define Global (0xC0) with offset: {}", chunk[offset+1] as usize);
+                    let glob = self.constants[chunk[offset+1] as usize].clone();
+                    match glob {
+                        ThetaValue::HeapValue(hv) => {
+                            match &*hv {
+                                ThetaHeapValue::Str(s) => {
+                                    self.globals.insert(s.to_string(), self.stack.last().expect("no value on stack").clone());
+                                    self.stack.pop();
+                                },
+                            }
+                        },
+                        _ => panic!("Define Global with no HV")
+                    }
+                    offset += 2
+                },
+                0xC1 => { 
+                    debug!("Op: Read Global (0xC1)");
+                    let glob = self.constants[chunk[offset+1] as usize].clone();
+                    match glob {
+                        ThetaValue::HeapValue(hv) => {
+                            match &*hv {
+                                ThetaHeapValue::Str(s) => {
+                                    let v = self.globals.get(s);
+                                    let v2 = v.expect("no such constant");
+                                    self.stack.push(v2.clone());
+                                },
+                            }
+                        },
+                        _ => panic!("Read Global with no HV")
+                    }
+                    offset += 2
                 },
                 0xFF => { 
                     debug!("Op: Print (0xFF)"); 

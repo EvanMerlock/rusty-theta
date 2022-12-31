@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use std::hash::Hash;
 
 lazy_static! {
     pub(crate) static ref IDENTIFIERS: HashMap<&'static str, TokenType> = {
@@ -50,7 +51,7 @@ impl Token {
     }
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Hash, Eq)]
 struct LocationData {
     line_num: usize,
     tok_begin: usize,
@@ -85,5 +86,9 @@ pub enum TokenType {
 impl TokenType {
     pub fn is_literal(&self) -> bool {
         matches!(self, Self::Identifier(_) | Self::Str(_) | Self::Integer(_) | Self::Float(_) | Self::True | Self::False)
+    }
+
+    pub fn is_ident(&self) -> bool {
+        matches!(self, Self::Identifier(_))
     }
 }

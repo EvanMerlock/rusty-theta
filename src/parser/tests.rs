@@ -14,7 +14,7 @@ macro_rules! define_parse_test {
                 let actual_out = parser.parse();
     
                 assert_eq!(actual_out.is_ok(), true);
-                assert_eq!(actual_out.expect("failed to unwrap in test"), $output);
+                assert_eq!(actual_out.expect("failed to unwrap in test").0, $output);
             }
         }
     };

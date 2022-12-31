@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let parser = BasicParser::new(&mut tok_stream);
     let expression = parser.parse()?;
 
-    write!(&mut out_file, "{:?}", expression)?;
+    write!(&mut out_file, "{:?}", expression.0)?;
 
     Ok(())
 }

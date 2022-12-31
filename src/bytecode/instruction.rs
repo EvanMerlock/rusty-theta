@@ -17,5 +17,8 @@ pub enum OpCode {
     GT,
     LT,
 
+    DEFINE_GLOBAL { offset: usize },
+    GET_GLOBAL { offset: usize },
+
     DEBUG_PRINT,
 }

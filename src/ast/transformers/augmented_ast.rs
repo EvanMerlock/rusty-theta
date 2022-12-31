@@ -1,4 +1,4 @@
-use crate::lexer::token::Token;
+use crate::{lexer::token::Token, parser::Identifier};
 use std::fmt::Debug;
 
 #[derive(Debug, PartialEq)]
@@ -73,6 +73,11 @@ pub enum AugmentedStatement<T> where T: Debug + PartialEq {
     PrintStatement {
         expression: AugmentedExpression<T>,
         information: T
+    },
+    VarStatement {
+        ident: Identifier,
+        init: AugmentedExpression<T>,
+        information: T,
     }
 }
 
@@ -81,6 +86,7 @@ impl<T: Debug + PartialEq> AugmentedStatement<T> {
         match self {
             AugmentedStatement::ExpressionStatement { expression, information } => information,
             AugmentedStatement::PrintStatement { information, expression } => information,
+            AugmentedStatement::VarStatement { ident, init, information } => information,
         }
     }
 }

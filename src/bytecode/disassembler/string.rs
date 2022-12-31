@@ -93,6 +93,8 @@ impl Disassembler for StringDisassembler {
                 0x9 => { readout.push_str("Op: Eq (0x9)\r\n"); offset += 1 },
                 0xA => { readout.push_str("Op: GT (0xA)\r\n"); offset += 1 },
                 0xB => { readout.push_str("Op: LT (0xB)\r\n"); offset += 1 },
+                0xC0 => { readout.push_str(&format!("Op: Def Global (0x1) with offset: {}\r\n", &chunk[offset+1])); offset += 2 },
+                0xC1 => { readout.push_str(&format!("Op: Get Global (0x1) with offset: {}\r\n", &chunk[offset+1])); offset += 2 },
                 0xFF => { readout.push_str("Op: Print (0xFF)\r\n"); offset += 1 },
                 code => { readout.push_str(&format!("Op: Unknown ({:#x})\r\n", code)); offset += 1 }
             }

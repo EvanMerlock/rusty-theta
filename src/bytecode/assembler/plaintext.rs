@@ -46,6 +46,9 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
                     OpCode::GT => writeln!(self.output_file, "Op: Greater Than (0xA)")?,
                     OpCode::LT => writeln!(self.output_file, "Op: Less Than (0xB)")?,
 
+                    OpCode::DEFINE_GLOBAL { offset } => writeln!(self.output_file, "Op: Define Global with global name {:?} (0xC0)", chunk.constants()[*offset])?,
+                    OpCode::GET_GLOBAL { offset } => writeln!(self.output_file, "Op: Get Global with global name {:?} (0xC1)", chunk.constants()[*offset])?,
+
                     OpCode::DEBUG_PRINT => writeln!(self.output_file, "Op: DebugPrint (0xFF)")?,
                 };
             }

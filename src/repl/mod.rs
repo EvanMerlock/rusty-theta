@@ -2,6 +2,7 @@ use std::io::Cursor;
 
 use log::{LevelFilter, debug};
 
+use crate::ast::symbol::SymbolTable;
 use crate::ast::transformers::typeck::TypeCk;
 use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
 use crate::bytecode::{BasicAssembler, Assembler, Disassembler, OpCode, Chunk};
@@ -9,6 +10,7 @@ use crate::{vm::{VM}, build_chunk, lexer::{BasicLexer, Lexer}, parser::{BasicPar
 
 pub struct Repl {
     machine: VM,
+    tbl: SymbolTable,
 }
 
 pub enum ReplStatus {
@@ -20,6 +22,7 @@ impl Repl {
     pub fn init() -> Repl {
         Repl {
             machine: VM::new(),
+            tbl: SymbolTable::default(),
         }
     }
 
@@ -48,10 +51,16 @@ impl Repl {
                         },
                         "--heap" => {
                             debug!("Heap: {:?}", self.machine.heap());
+                        },
+                        "--globals" => {
+                            debug!("Globals: {:#?}", self.machine.globals());
+                        },
+                        "--symbols" => {
+                            debug!("Symbol Table: {:#?}", self.tbl);
                         }
-                        "--quit" => {
+                        "--quit" | "--exit" => {
                             return Ok(ReplStatus::ReplTerminate);
-                        }
+                        },
                         _ => {},
                     }
                     return Ok(ReplStatus::ReplOk);
@@ -61,10 +70,12 @@ impl Repl {
                 let lexer = BasicLexer::new(&mut chars);
                 let tokens = lexer.lex()?;
                 let mut token_stream = tokens.into_iter();
-                let parser = BasicParser::new(&mut token_stream);
-                let ast = parser.parse()?;
-                let type_check = TypeCk::transform(&ast)?;
-                let chunk = ToByteCode::transform(&type_check)?;
+                let parser = BasicParser::new_sym(&mut token_stream, self.tbl.clone());
+                let (ast, sym) = parser.parse()?;
+                let type_cker = TypeCk::new(sym.clone());
+                self.tbl = sym;
+                let type_check = type_cker.transform(&ast)?;
+                let chunk = ToByteCode.transform(&type_check)?;
                 let chunks: Vec<Chunk> = vec![chunk];
                 {
                     let mut code = Box::new(Cursor::new(Vec::new()));

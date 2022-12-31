@@ -51,7 +51,9 @@ impl<'a> Assembler for BasicAssembler<'a> {
                                 self.output_file.write_all(s.as_bytes())?;
                             },
                         }                        
-                        // we will need to care about certain values
+                        // we will need to care about certain values on the heap to persist them outwards to the constant pool
+                        // this involves any objects that can be stored in the constant pool
+
                     },
                 };
             }
@@ -72,6 +74,9 @@ impl<'a> Assembler for BasicAssembler<'a> {
                     OpCode::EQ => self.output_file.write(&[9u8])?,
                     OpCode::GT => self.output_file.write(&[0xAu8])?,
                     OpCode::LT => self.output_file.write(&[0xBu8])?,
+
+                    OpCode::DEFINE_GLOBAL { offset } => self.output_file.write(&[0xC0u8, *offset as u8])?,
+                    OpCode::GET_GLOBAL { offset } => self.output_file.write(&[0xC1u8, *offset as u8])?,
 
                     OpCode::DEBUG_PRINT => self.output_file.write(&[0xFFu8])?,
                 };
