@@ -4,24 +4,24 @@ use log::debug;
 
 use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER};
 
+use super::call_frame::ThetaStack;
+
 pub struct VM {
-    stack: Vec<ThetaValue>,
+    stack: ThetaStack,
     constants: Vec<ThetaValue>,
-    globals: HashMap<String, ThetaValue>,
     heap: Vec<Rc<ThetaHeapValue>>,
 }
 
 impl VM {
     pub fn new() -> VM {
         VM {
-            stack: Vec::new(),
+            stack: ThetaStack::new(),
             constants: Vec::new(),
-            globals: HashMap::new(),
             heap: Vec::new(),
         }
     }
 
-    pub fn stack(&self) -> &Vec<ThetaValue> {
+    pub fn stack(&self) -> &ThetaStack {
         &self.stack
     }
 
@@ -34,7 +34,7 @@ impl VM {
     }
 
     pub fn globals(&self) -> &HashMap<String, ThetaValue> {
-        &self.globals
+        self.stack.globals()
     }
 
     pub fn clear_const_pool(&mut self) {
@@ -278,7 +278,8 @@ impl Disassembler for VM {
                         ThetaValue::HeapValue(hv) => {
                             match &*hv {
                                 ThetaHeapValue::Str(s) => {
-                                    self.globals.insert(s.to_string(), self.stack.last().expect("no value on stack").clone());
+                                    let sv = self.stack.peek().expect("no value on stack").clone();
+                                    self.stack.globals_mut().insert(s.to_string(), sv);
                                     self.stack.pop();
                                 },
                             }
@@ -294,9 +295,9 @@ impl Disassembler for VM {
                         ThetaValue::HeapValue(hv) => {
                             match &*hv {
                                 ThetaHeapValue::Str(s) => {
-                                    let v = self.globals.get(s);
-                                    let v2 = v.expect("no such constant");
-                                    self.stack.push(v2.clone());
+                                    let v = self.stack.globals_mut().get(s);
+                                    let v2 = v.expect("no such constant").clone();
+                                    self.stack.push(v2);
                                 },
                             }
                         },
