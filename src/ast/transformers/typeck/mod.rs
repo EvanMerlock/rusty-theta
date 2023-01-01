@@ -22,6 +22,7 @@ pub enum TypeCkError {
     TypeNotFound(Identifier),
     InvalidTypeInPosition(Identifier),
     IncorrectInitializer(Identifier),
+    InvalidAssignment(TypeInformation, TypeInformation),
 }
 
 impl Error for TypeCkError {
@@ -42,6 +43,7 @@ impl Display for TypeCkError {
             TypeCkError::TypeNotFound(ident) => write!(f, "Type not found for variable: {:?}", ident),
             TypeCkError::InvalidTypeInPosition(ident) => write!(f, "!! A type was sent where a variable name was expected: {:?} !!", ident),
             TypeCkError::IncorrectInitializer(ident) => write!(f, "Incorrect initializer for identifier: {:?}", ident),
+            TypeCkError::InvalidAssignment(lhs, rhs) => write!(f, "Invalid assignment; LHS = {:?}, RHS = {:?} and there is no type-unity", lhs, rhs),
         }
     }
 }
@@ -194,6 +196,17 @@ impl ASTVisitor<()> for TypeCk {
                 let fin_info = new_seq[new_seq.len()-1].information().clone();
 
                 Ok(AugmentedExpression::Sequence { seq: new_seq, information: fin_info })
+            },
+            AugmentedExpression::Assignment { name, value, information } => {
+                let lhs_ty = self.symbol_table.get_symbol_data(name).ok_or(TypeCkError::TypeNotFound(name.clone())).map(|x| x.ty().clone())?;
+                let rhs_ty = self.visit_expression(&value)?;
+
+                if lhs_ty != *rhs_ty.information() {
+                    Err(TransformError::from(TypeCkError::InvalidAssignment(lhs_ty, rhs_ty.information().clone())))
+                } else {
+                    Ok(AugmentedExpression::Assignment { name: name.clone(), value: Box::new(rhs_ty), information: lhs_ty })
+                }
+
             },
         }
     }

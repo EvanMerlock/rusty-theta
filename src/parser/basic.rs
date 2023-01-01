@@ -221,7 +221,30 @@ impl<'a> BasicParser<'a> {
 
     fn expression(&mut self) -> Result<Expression, super::ParseError> {
         debug!("read expression");
-        self.equality() 
+        self.assignment() 
+    }
+
+    fn assignment(&mut self) -> Result<Expression, super::ParseError> {
+        debug!("read assignment");
+        let lhs = self.equality()?;
+
+        if let Some(eq) = self.match_token([TokenType::Equal]) {
+            // we have assignment
+            let rhs = self.assignment()?;
+
+            return match lhs {                
+                crate::ast::transformers::AugmentedExpression::Literal { literal, information } => {
+                    if let TokenType::Identifier(s) = literal.ty() {
+                        Ok(Expression::Assignment { name: Identifier::from(s), value: Box::new(rhs), information: () })
+                    } else {
+                        Err(super::ParseError::from_token(eq, "Invalid assignment target"))
+                    }
+                },
+                _ => Err(super::ParseError::from_token(eq, "Invalid assignment target")),
+            }
+        }
+
+        Ok(lhs)
     }
 
     fn equality(&mut self) -> Result<Expression, super::ParseError> {

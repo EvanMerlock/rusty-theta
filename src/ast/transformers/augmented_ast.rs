@@ -51,6 +51,12 @@ pub enum AugmentedExpression<T> where T: Debug + PartialEq {
         seq: Vec<AugmentedExpression<T>>,
         information: T
     },
+    // TODO: name will become an lvalue
+    Assignment {
+        name: Identifier,
+        value: Box<AugmentedExpression<T>>,
+        information: T
+    }
 }
 
 impl<T: Debug + PartialEq> AugmentedExpression<T> {
@@ -60,6 +66,7 @@ impl<T: Debug + PartialEq> AugmentedExpression<T> {
             AugmentedExpression::Unary { operator, right, information } => information,
             AugmentedExpression::Literal { literal, information } => information,
             AugmentedExpression::Sequence { seq, information } => information,
+            AugmentedExpression::Assignment { name, value, information } => information,
         }
     }
 }

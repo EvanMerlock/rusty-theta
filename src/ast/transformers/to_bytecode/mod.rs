@@ -103,6 +103,12 @@ impl ASTTerminator<TypeInformation> for ToByteCode {
                     .reduce(|acc, new| acc.merge_chunk(new))
                     .expect("expression vec was empty in seq")
             }
+            AugmentedExpression::Assignment { name, value, information } => {
+                let st = Rc::new(ThetaHeapValue::Str(name.id().clone()));
+                let set_chunk = self.visit_expression(value)?;
+                let glob_chunk = build_chunk!(OpCode::DEFINE_GLOBAL { offset: 0 }; ThetaValue::HeapValue(st));
+                set_chunk.merge_chunk(glob_chunk)
+            },
         })
     }
 
