@@ -35,19 +35,6 @@ impl Repl {
                         "--stack" => {
                             debug!("Stack: {:?}", self.machine.stack());
                         },
-                        "--ret" => {
-                            let chunks = vec![build_chunk!(OpCode::Return)];
-                            {
-                                let mut code = Box::new(Cursor::new(Vec::new()));
-                                {
-                                    let mut assembler = BasicAssembler::new(&mut code);
-                        
-                                    assembler.assemble(chunks)?;
-                                }
-                                self.machine.disassemble(code.get_ref())?;
-                                self.machine.clear_const_pool();
-                            }
-                        },
                         "--constants" => {
                             debug!("Constants: {:?}", self.machine.constants());
                         },
