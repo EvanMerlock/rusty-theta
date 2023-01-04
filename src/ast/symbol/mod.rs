@@ -116,7 +116,7 @@ impl SymbolData {
         match self {
             SymbolData::Type { ty } => ty,
             SymbolData::GlobalVariable { ty } => ty,
-            SymbolData::LocalVariable { ty, slot, scope_level } => ty,
+            SymbolData::LocalVariable { ty, slot: _, scope_level: _ } => ty,
         }
     }
 }

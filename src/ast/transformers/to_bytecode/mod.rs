@@ -7,7 +7,7 @@ use crate::bytecode::{Chunk, OpCode, ThetaValue, ThetaHeapValue};
 use crate::parser::Identifier;
 use crate::{build_chunk, lexer::token};
 
-use super::typeck::{TypeInformation, TypeCkOutput};
+use super::typeck::TypeCkOutput;
 use super::{ASTTerminator, ASTTransformer};
 
 pub struct ToByteCode;

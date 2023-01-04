@@ -1,4 +1,4 @@
-use crate::{lexer::token::Token, parser::Identifier, ast::symbol::ExtSymbolTable};
+use crate::{lexer::token::Token, parser::Identifier};
 use std::fmt::Debug;
 
 #[derive(Debug, PartialEq)]
@@ -79,11 +79,11 @@ impl<T: Debug + PartialEq> Expression<T> {
 
     pub fn strip_information(self) -> Expression<()> {
         match self {
-            Expression::Binary { left, operator, right, information } => Expression::Binary { left: Box::new(left.strip_information()), operator, right: Box::new(right.strip_information()), information: () },
-            Expression::Unary { operator, right, information } => Expression::Unary { operator, right: Box::new(right.strip_information()), information: () },
-            Expression::Literal { literal, information } => Expression::Literal { literal, information: () },
-            Expression::Sequence { seq, information } => Expression::Sequence { seq: seq.into_iter().map(|x| x.strip_information()).collect(), information: () },
-            Expression::Assignment { name, value, information } => Expression::Assignment { name, value: Box::new(value.strip_information()), information: () },
+            Expression::Binary { left, operator, right, information: _ } => Expression::Binary { left: Box::new(left.strip_information()), operator, right: Box::new(right.strip_information()), information: () },
+            Expression::Unary { operator, right, information: _ } => Expression::Unary { operator, right: Box::new(right.strip_information()), information: () },
+            Expression::Literal { literal, information: _ } => Expression::Literal { literal, information: () },
+            Expression::Sequence { seq, information: _ } => Expression::Sequence { seq: seq.into_iter().map(|x| x.strip_information()).collect(), information: () },
+            Expression::Assignment { name, value, information: _ } => Expression::Assignment { name, value: Box::new(value.strip_information()), information: () },
         }
     }
 }
@@ -121,10 +121,10 @@ impl<T: Debug + PartialEq> Statement<T> {
 
     pub fn strip_information(self) -> Statement<()> {
         match self {
-            Statement::ExpressionStatement { expression, information } => Statement::ExpressionStatement { expression: expression.strip_information(), information: () },
-            Statement::PrintStatement { expression, information } => Statement::PrintStatement { expression: expression.strip_information(), information: () },
-            Statement::VarStatement { ident, init, information } => Statement::VarStatement { ident, init: init.strip_information(), information: () },
-            Statement::BlockStatement { statements, information } => Statement::BlockStatement { statements: statements.into_iter().map(|x| x.strip_information()).collect(), information: () },
+            Statement::ExpressionStatement { expression, information: _ } => Statement::ExpressionStatement { expression: expression.strip_information(), information: () },
+            Statement::PrintStatement { expression, information: _ } => Statement::PrintStatement { expression: expression.strip_information(), information: () },
+            Statement::VarStatement { ident, init, information: _ } => Statement::VarStatement { ident, init: init.strip_information(), information: () },
+            Statement::BlockStatement { statements, information: _ } => Statement::BlockStatement { statements: statements.into_iter().map(|x| x.strip_information()).collect(), information: () },
         }
     }
 }

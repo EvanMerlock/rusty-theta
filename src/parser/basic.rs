@@ -10,7 +10,11 @@ pub struct BasicParser<'a> {
     symbol_tbl: ExtSymbolTable,
     root_symbol_tbl: ExtSymbolTable,
     // used for functions
-    symbol_tables: Vec<ExtSymbolTable>,
+    // NOT NECESSARY as sym table follows AST tree now and is in RC
+    // symbol_tables: Vec<ExtSymbolTable>,
+
+    // TODO: we need some form of phased memory allocation for the compiler
+    // but we need to allow some entities, like SymbolTables, to transcend phases.
 }
 
 // TODO: split up tokens that are operators into operator type by expression type.
@@ -21,8 +25,7 @@ impl<'a> BasicParser<'a> {
         BasicParser {
             tokens: token_stream.peekable(),
             symbol_tbl: symbol_table.clone(),
-            root_symbol_tbl: symbol_table.clone(),
-            symbol_tables: vec![symbol_table],
+            root_symbol_tbl: symbol_table,
         }
     }
 
@@ -30,8 +33,7 @@ impl<'a> BasicParser<'a> {
         BasicParser { 
             tokens: token_stream.peekable(), 
             symbol_tbl: sym.clone(),
-            root_symbol_tbl: sym.clone(),
-            symbol_tables: vec![sym],
+            root_symbol_tbl: sym,
         }
     }
 

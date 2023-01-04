@@ -7,8 +7,8 @@ use log::{LevelFilter, debug};
 use crate::ast::symbol::{SymbolTable, ExtSymbolTable};
 use crate::ast::transformers::typeck::TypeCk;
 use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
-use crate::bytecode::{BasicAssembler, Assembler, Disassembler, OpCode, Chunk};
-use crate::{vm::{VM}, build_chunk, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}};
+use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk};
+use crate::{vm::VM, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}};
 
 pub struct Repl {
     machine: VM,
@@ -76,6 +76,10 @@ impl Repl {
                     }
                     self.machine.disassemble(code.get_ref())?;
                     //TODO: should not need to do this. linking/relative offsetting?
+                    // most likely need to clear symbol table of non-top-level symbols after every run since functions + user def. types should keep their own sym tbl
+                    // idents should be stored in const pool as necessary
+                    // need to come up with cleaner way of cleaning up machine after individual REPL line runs
+                    // some things need to stay resident and others do not.
                     self.machine.clear_const_pool();
                 }
                 Ok(ReplStatus::ReplOk)
