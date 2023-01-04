@@ -1,7 +1,7 @@
 use clap::{Parser as ClapParser, clap_derive::ArgEnum};
 use theta_lang::bytecode::{BasicAssembler, Assembler, PlainTextAssembler, AssembleError};
 use std::{fs::File, io::BufReader};
-use theta_lang::build_chunk;
+
 #[derive(ClapParser)]
 #[clap(version = "0.0.1", author = "Evan Merlock")]
 struct ThetaCOptions {

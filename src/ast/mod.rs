@@ -1,8 +1,6 @@
-use self::transformers::{AugmentedAbstractTree, AugmentedExpression, AugmentedStatement};
+mod tree;
+pub use self::tree::{AbstractTree, Expression, Statement};
+pub(crate) use self::tree::InnerAbstractTree;
 
 pub mod transformers;
 pub mod symbol;
-
-pub type AbstractTree = AugmentedAbstractTree<()>;
-pub type Expression = AugmentedExpression<()>;
-pub type Statement = AugmentedStatement<()>;

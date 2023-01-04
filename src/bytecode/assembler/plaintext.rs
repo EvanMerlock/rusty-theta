@@ -32,24 +32,26 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
             let instructions_in_chunk = chunk.instructions();
             for opcode in instructions_in_chunk {
                 match opcode {
-                    OpCode::RETURN => writeln!(self.output_file, "Op: Return (0x0)")?,
-                    OpCode::CONSTANT { offset } => writeln!(self.output_file, "Op: Constant (0x1), with constant {:?}", chunk.constants()[*offset])?,
-                    OpCode::PUSH => writeln!(self.output_file, "Op: Push (0x2)")?,
-                    OpCode::POP => writeln!(self.output_file, "Op: Pop (0x3)")?,
+                    OpCode::Return => writeln!(self.output_file, "Op: Return (0x0)")?,
+                    OpCode::Constant { offset } => writeln!(self.output_file, "Op: Constant (0x1), with constant {:?}", chunk.constants()[*offset])?,
+                    OpCode::Push => writeln!(self.output_file, "Op: Push (0x2)")?,
+                    OpCode::Pop => writeln!(self.output_file, "Op: Pop (0x3)")?,
 
-                    OpCode::ADD => writeln!(self.output_file, "Op: Add (0x4)")?,
-                    OpCode::SUBTRACT => writeln!(self.output_file, "Op: Sub (0x5)")?,
-                    OpCode::MULTIPLY => writeln!(self.output_file, "Op: Mul (0x6)")?,
-                    OpCode::DIVIDE => writeln!(self.output_file, "Op: Div (0x7)")?,
-                    OpCode::NEGATE => writeln!(self.output_file, "Op: Neg (0x8)")?,
-                    OpCode::EQ => writeln!(self.output_file, "Op: Equal (0x9)")?,
-                    OpCode::GT => writeln!(self.output_file, "Op: Greater Than (0xA)")?,
-                    OpCode::LT => writeln!(self.output_file, "Op: Less Than (0xB)")?,
+                    OpCode::Add => writeln!(self.output_file, "Op: Add (0x4)")?,
+                    OpCode::Subtract => writeln!(self.output_file, "Op: Sub (0x5)")?,
+                    OpCode::Multiply => writeln!(self.output_file, "Op: Mul (0x6)")?,
+                    OpCode::Divide => writeln!(self.output_file, "Op: Div (0x7)")?,
+                    OpCode::Negate => writeln!(self.output_file, "Op: Neg (0x8)")?,
+                    OpCode::Equal => writeln!(self.output_file, "Op: Equal (0x9)")?,
+                    OpCode::GreaterThan => writeln!(self.output_file, "Op: Greater Than (0xA)")?,
+                    OpCode::LessThan => writeln!(self.output_file, "Op: Less Than (0xB)")?,
 
-                    OpCode::DEFINE_GLOBAL { offset } => writeln!(self.output_file, "Op: Define Global with global name {:?} (0xC0)", chunk.constants()[*offset])?,
-                    OpCode::GET_GLOBAL { offset } => writeln!(self.output_file, "Op: Get Global with global name {:?} (0xC1)", chunk.constants()[*offset])?,
+                    OpCode::DefineGlobal { offset } => writeln!(self.output_file, "Op: Define Global with global name {:?} (0xC0)", chunk.constants()[*offset])?,
+                    OpCode::GetGlobal { offset } => writeln!(self.output_file, "Op: Get Global with global name {:?} (0xC1)", chunk.constants()[*offset])?,
+                    OpCode::DefineLocal { offset } => writeln!(self.output_file, "Op: Define Local with offset {:?} (0xC2)", offset)?,
+                    OpCode::GetLocal { offset } => writeln!(self.output_file, "Op: Get Local wih offset {:?} (0xC3)", offset)?,
 
-                    OpCode::DEBUG_PRINT => writeln!(self.output_file, "Op: DebugPrint (0xFF)")?,
+                    OpCode::DebugPrint => writeln!(self.output_file, "Op: DebugPrint (0xFF)")?,
                 };
             }
         }

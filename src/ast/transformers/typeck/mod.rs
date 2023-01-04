@@ -2,15 +2,15 @@ use std::{error::Error, fmt::Display};
 
 use log::{debug, error, trace};
 
-use super::{ASTTransformer, ASTVisitor, AugmentedAbstractTree, AugmentedExpression, TransformError};
-use crate::{ast::{AbstractTree, symbol::SymbolTable}, lexer::token::{TokenType, Token}, parser::Identifier};
+use super::{ASTTransformer, ASTVisitor, TransformError};
+use crate::{ast::{symbol::{ExtSymbolTable, SymbolData}, AbstractTree, InnerAbstractTree, Expression, Statement}, lexer::token::{TokenType, Token}, parser::{Identifier, ParseInfo}};
 
 pub struct TypeCk {
-    symbol_table: SymbolTable
+    symbol_table: ExtSymbolTable
 }
 
 impl TypeCk {
-    pub fn new(tbl: SymbolTable) -> TypeCk {
+    pub fn new(tbl: ExtSymbolTable) -> TypeCk {
         TypeCk { symbol_table: tbl }
     }
 }
@@ -48,6 +48,12 @@ impl Display for TypeCkError {
     }
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeCkOutput {
+    pub ty: TypeInformation,
+    pub pi: ParseInfo,
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TypeInformation {
     Int,
@@ -58,36 +64,36 @@ pub enum TypeInformation {
     None,
 }
 
-impl ASTTransformer<()> for TypeCk {
+impl ASTTransformer<ParseInfo> for TypeCk {
 
-    type Out = AugmentedAbstractTree<TypeInformation>;
+    type Out = AbstractTree<TypeCkOutput>;
 
-    fn transform(&self, tree: &AbstractTree) -> Result<Self::Out, super::TransformError> {
+    fn transform(&self, tree: &AbstractTree<ParseInfo>) -> Result<Self::Out, super::TransformError> {
         trace!("Symbol Table: {:#?}", self.symbol_table);
         Ok(match tree.inner() {
-            super::InnerAbstractTree::Expression(expr) => { 
+            InnerAbstractTree::Expression(expr) => { 
                 let ty_aug = self.visit_expression(&expr.0)?;
                 let info = ty_aug.information().clone();
                 debug!("Completed TypeCk on Expr w/ Type: {:?}", info);
-                AugmentedAbstractTree::expression(ty_aug, info)
+                AbstractTree::expression(ty_aug, info)
             },
-            super::InnerAbstractTree::Statement(stmt) => {
+            InnerAbstractTree::Statement(stmt) => {
                 let ty_aug = self.visit_statement(&stmt.0)?;
                 let info = ty_aug.information().clone();
                 debug!("Completed TypeCk on Stmt w/ Type: {:?}", info);
-                AugmentedAbstractTree::statement(ty_aug, info)
+                AbstractTree::statement(ty_aug, info)
             },
         })
     }
 
 }
 
-impl ASTVisitor<()> for TypeCk {
-    type InfoOut = TypeInformation;
+impl ASTVisitor<ParseInfo> for TypeCk {
+    type InfoOut = TypeCkOutput;
 
-    fn visit_expression(&self, expr: &super::AugmentedExpression<()>) -> Result<AugmentedExpression<Self::InfoOut>, super::TransformError> {
+    fn visit_expression(&self, expr: &Expression<ParseInfo>) -> Result<Expression<Self::InfoOut>, super::TransformError> {
         match expr {
-            AugmentedExpression::Binary { left, operator, right, information } => {
+            Expression::Binary { left, operator, right, information: info } => {
                 let left_ty_res = self.visit_expression(left);
                 let right_ty_res = self.visit_expression(right);
 
@@ -109,7 +115,7 @@ impl ASTVisitor<()> for TypeCk {
 
                 // TODO: WE NEED TO LOOK FOR FUNCTIONS THAT MATCH THE TYPE INFORMATION FOR BINARY OPERATORS.
                 // WE MUST CHECK ALL KNOWN SYMBOLS IN THE COMPILE UNIT FOR DISPATCH POSSIBILITIES
-                let ty_info = match (left_ty.information(), right_ty.information(), operator.ty()) {
+                let ty_info = match (left_ty.information().ty.clone(), right_ty.information().ty.clone(), operator.ty()) {
                     (_, _, TokenType::EqualEqual) => TypeInformation::Boolean,
                     (_, _, TokenType::BangEqual) => TypeInformation::Boolean,
 
@@ -139,13 +145,13 @@ impl ASTVisitor<()> for TypeCk {
 
                     _ => {
                         error!("Type Mismatch! {:?} and {:?} do not have an implementation of {:?}", *left_ty.information(), *right_ty.information(), operator.clone());
-                        return Err(TransformError::from(TypeCkError::ExpressionBinaryTypeCkFail(left_ty.information().clone(), right_ty.information().clone(), operator.clone()))) 
+                        return Err(TransformError::from(TypeCkError::ExpressionBinaryTypeCkFail(left_ty.information().ty.clone(), right_ty.information().ty.clone(), operator.clone()))) 
                     },
                 };
 
-                Ok(AugmentedExpression::Binary { left: Box::new(left_ty), operator: operator.clone(), right: Box::new(right_ty), information: ty_info })
+                Ok(Expression::Binary { left: Box::new(left_ty), operator: operator.clone(), right: Box::new(right_ty), information: TypeCkOutput { ty: ty_info, pi: info.clone() } })
             },
-            AugmentedExpression::Unary { operator, right, information } => {
+            Expression::Unary { operator, right, information: info } => {
                 let r_ty_res = self.visit_expression(right);
 
                 let r_ty = match r_ty_res {
@@ -156,37 +162,39 @@ impl ASTVisitor<()> for TypeCk {
                     },
                 };
 
-                let ty_chk = match (r_ty.information(), operator.ty()) {
+                let ty_chk = match (r_ty.information().ty.clone(), operator.ty()) {
                     (TypeInformation::Int, TokenType::Minus) => TypeInformation::Int,
                     (TypeInformation::Int, TokenType::Bang) => TypeInformation::Int,
                     (TypeInformation::Float, TokenType::Minus) => TypeInformation::Float,
                     (TypeInformation::Boolean, TokenType::Bang) => TypeInformation::Boolean,
 
-                    _ => return Err(TransformError::from(TypeCkError::ExpressionUnaryTypeCkFail(r_ty.information().clone(), operator.clone())))
+                    _ => return Err(TransformError::from(TypeCkError::ExpressionUnaryTypeCkFail(r_ty.information().ty.clone(), operator.clone())))
 
                 };
-
-                Ok(AugmentedExpression::Unary { operator: operator.clone(), right: Box::new(r_ty), information: ty_chk })
+                Ok(Expression::Unary { operator: operator.clone(), right: Box::new(r_ty), information: TypeCkOutput { ty: ty_chk, pi: info.clone() } })
             },
-            AugmentedExpression::Literal { literal,information } => {
+            Expression::Literal { literal,information: info } => {
                 match literal.ty() {
-                    TokenType::Str(_) => Ok(AugmentedExpression::Literal { literal: literal.clone(), information: TypeInformation::String }),
-                    TokenType::Integer(_) => Ok(AugmentedExpression::Literal { literal: literal.clone(), information: TypeInformation::Int }),
-                    TokenType::Float(_) => Ok(AugmentedExpression::Literal { literal: literal.clone(), information: TypeInformation::Float }),
+                    TokenType::Str(_) => Ok(Expression::Literal { literal: literal.clone(), information: TypeCkOutput { ty: TypeInformation::String, pi: info.clone() } }),
+                    TokenType::Integer(_) => Ok(Expression::Literal { literal: literal.clone(), information: TypeCkOutput { ty: TypeInformation::Int, pi: info.clone() } }),
+                    TokenType::Float(_) => Ok(Expression::Literal { literal: literal.clone(), information: TypeCkOutput { ty: TypeInformation::Float, pi: info.clone() } }),
                     TokenType::Identifier(id) => { 
                         let id = Identifier::from(id);
                         Ok(
-                            AugmentedExpression::Literal { 
+                            Expression::Literal { 
                                 literal: literal.clone(), 
-                                information: self.symbol_table.get_symbol_data(&id).ok_or(TypeCkError::TypeNotFound(id)).map(|x| x.ty().clone())? 
+                                information: TypeCkOutput { 
+                                    ty: self.symbol_table.borrow().get_symbol_data(&id, info.scope_depth).ok_or(TypeCkError::TypeNotFound(id)).map(|x| x.ty().clone())?,
+                                    pi: info.clone(),
+                                }
                             }
                         ) },
-                    TokenType::True => Ok(AugmentedExpression::Literal { literal: literal.clone(), information: TypeInformation::Boolean }),
-                    TokenType::False => Ok(AugmentedExpression::Literal { literal: literal.clone(), information: TypeInformation::Boolean }),
+                    TokenType::True => Ok(Expression::Literal { literal: literal.clone(), information: TypeCkOutput { ty: TypeInformation::Boolean, pi: info.clone() } }),
+                    TokenType::False => Ok(Expression::Literal { literal: literal.clone(), information: TypeCkOutput { ty: TypeInformation::Boolean, pi: info.clone() } }),
                     _ => panic!("a non-literal token was in a literal position."),
                 }
             },
-            AugmentedExpression::Sequence { seq, information } => {
+            Expression::Sequence { seq, information: _ } => {
                 // we need to typecheck each portion of the seq but only the last one matters to pass upwards
                 let mut new_seq = Vec::new();
                 for seq_item in &seq[..seq.len()] {
@@ -195,33 +203,35 @@ impl ASTVisitor<()> for TypeCk {
                 }
                 let fin_info = new_seq[new_seq.len()-1].information().clone();
 
-                Ok(AugmentedExpression::Sequence { seq: new_seq, information: fin_info })
+                // subtle bug _might_ be possible here
+                // can fin_info.pi != info?
+                Ok(Expression::Sequence { seq: new_seq, information: fin_info })
             },
-            AugmentedExpression::Assignment { name, value, information } => {
-                let lhs_ty = self.symbol_table.get_symbol_data(name).ok_or(TypeCkError::TypeNotFound(name.clone())).map(|x| x.ty().clone())?;
-                let rhs_ty = self.visit_expression(&value)?;
+            Expression::Assignment { name, value, information: info } => {
+                let lhs_ty = self.symbol_table.borrow().get_symbol_data(name, info.scope_depth).ok_or_else(|| TypeCkError::TypeNotFound(name.clone())).map(|x| x.ty().clone())?;
+                let rhs_ty = self.visit_expression(value)?;
 
-                if lhs_ty != *rhs_ty.information() {
-                    Err(TransformError::from(TypeCkError::InvalidAssignment(lhs_ty, rhs_ty.information().clone())))
+                if lhs_ty != rhs_ty.information().ty {
+                    Err(TransformError::from(TypeCkError::InvalidAssignment(lhs_ty, rhs_ty.information().ty.clone())))
                 } else {
-                    Ok(AugmentedExpression::Assignment { name: name.clone(), value: Box::new(rhs_ty), information: lhs_ty })
+                    Ok(Expression::Assignment { name: name.clone(), value: Box::new(rhs_ty), information: TypeCkOutput { ty: lhs_ty, pi: info.clone() } })
                 }
 
             },
         }
     }
 
-    fn visit_statement(&self, stmt: &super::AugmentedStatement<()>) -> Result<super::AugmentedStatement<Self::InfoOut>, TransformError> {
+    fn visit_statement(&self, stmt: &Statement<ParseInfo>) -> Result<Statement<Self::InfoOut>, TransformError> {
         match stmt {
-            super::AugmentedStatement::ExpressionStatement { expression, information } => {
+            Statement::ExpressionStatement { expression, information: info } => {
                 let aug_expr = self.visit_expression(expression)?;
-                Ok(super::AugmentedStatement::ExpressionStatement { expression: aug_expr, information: TypeInformation::None })
+                Ok(Statement::ExpressionStatement { expression: aug_expr, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
             },
-            super::AugmentedStatement::PrintStatement { expression, information } => {
+            Statement::PrintStatement { expression, information: info } => {
                 let aug_expr = self.visit_expression(expression)?;
-                Ok(super::AugmentedStatement::PrintStatement { expression: aug_expr, information: TypeInformation::None })
+                Ok(Statement::PrintStatement { expression: aug_expr, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
             },
-            super::AugmentedStatement::VarStatement { ident, init, information } => {
+            Statement::VarStatement { ident, init, information: info } => {
                 // need symbol table to be built for this.
                 // we just check that the init expr creates the same type as requested.
                 let aug_expr = self.visit_expression(init)?;
@@ -230,11 +240,12 @@ impl ASTVisitor<()> for TypeCk {
                 // if we cannot locate a symbol, we cannot use it here.
                 // that should also be enforced by the visit_expression call.
                 // However, we will still report an error if the symbol isn't found
-                let ty_match = match self.symbol_table.get_symbol_data(ident) {
+                let ty_match = match self.symbol_table.borrow().get_symbol_data(ident, info.scope_depth) {
                     Some(info) => {
                         match info {
-                            crate::ast::symbol::SymbolData::Type { ty } => return Err(TransformError::from(TypeCkError::InvalidTypeInPosition(ident.clone()))),
-                            crate::ast::symbol::SymbolData::Variable { ty } => ty == aug_expr.information(),
+                            SymbolData::Type { ty: _ } => return Err(TransformError::from(TypeCkError::InvalidTypeInPosition(ident.clone()))),
+                            SymbolData::GlobalVariable { ty } => ty == aug_expr.information().ty,
+                            SymbolData::LocalVariable { ty, slot: _, scope_level: _ } => ty == aug_expr.information().ty,
                         }
                     },
                     None => {
@@ -246,7 +257,18 @@ impl ASTVisitor<()> for TypeCk {
                     return Err(TransformError::from(TypeCkError::IncorrectInitializer(ident.clone())));
                 }
 
-                Ok(super::AugmentedStatement::VarStatement { ident: ident.clone(), init: aug_expr, information: TypeInformation::None })
+                Ok(Statement::VarStatement { ident: ident.clone(), init: aug_expr, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
+            },
+            Statement::BlockStatement { statements, information: info } => {
+                // is it possible for the last statement's type to carry for the block?
+                // we create a new typechecker because we need to look at the symbol table for this block.
+                let internal_typeck = TypeCk::new(info.current_symbol_table.clone());
+                let mut annotated_statements = Vec::new();
+                for statement in statements {
+                    let stmt = internal_typeck.visit_statement(statement)?;
+                    annotated_statements.push(stmt);
+                }
+                Ok(Statement::BlockStatement { statements: annotated_statements, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
             },
         }
     }

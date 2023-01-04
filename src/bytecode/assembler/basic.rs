@@ -61,24 +61,27 @@ impl<'a> Assembler for BasicAssembler<'a> {
             let instructions_in_chunk = chunk.instructions();
             for opcode in instructions_in_chunk {
                 match opcode {
-                    OpCode::RETURN => self.output_file.write(&[0u8])?,
-                    OpCode::CONSTANT { offset } => self.output_file.write(&[1u8, *offset as u8])?,
-                    OpCode::PUSH => self.output_file.write(&[2u8])?,
-                    OpCode::POP => self.output_file.write(&[3u8])?,
+                    OpCode::Return => self.output_file.write(&[0u8])?,
+                    OpCode::Constant { offset } => self.output_file.write(&[1u8, *offset as u8])?,
+                    OpCode::Push => self.output_file.write(&[2u8])?,
+                    OpCode::Pop => self.output_file.write(&[3u8])?,
 
-                    OpCode::ADD => self.output_file.write(&[4u8])?,
-                    OpCode::SUBTRACT => self.output_file.write(&[5u8])?,
-                    OpCode::MULTIPLY => self.output_file.write(&[6u8])?,
-                    OpCode::DIVIDE => self.output_file.write(&[7u8])?,
-                    OpCode::NEGATE => self.output_file.write(&[8u8])?,
-                    OpCode::EQ => self.output_file.write(&[9u8])?,
-                    OpCode::GT => self.output_file.write(&[0xAu8])?,
-                    OpCode::LT => self.output_file.write(&[0xBu8])?,
+                    OpCode::Add => self.output_file.write(&[4u8])?,
+                    OpCode::Subtract => self.output_file.write(&[5u8])?,
+                    OpCode::Multiply => self.output_file.write(&[6u8])?,
+                    OpCode::Divide => self.output_file.write(&[7u8])?,
+                    OpCode::Negate => self.output_file.write(&[8u8])?,
+                    OpCode::Equal => self.output_file.write(&[9u8])?,
+                    OpCode::GreaterThan => self.output_file.write(&[0xAu8])?,
+                    OpCode::LessThan => self.output_file.write(&[0xBu8])?,
 
-                    OpCode::DEFINE_GLOBAL { offset } => self.output_file.write(&[0xC0u8, *offset as u8])?,
-                    OpCode::GET_GLOBAL { offset } => self.output_file.write(&[0xC1u8, *offset as u8])?,
+                    OpCode::DefineGlobal { offset } => self.output_file.write(&[0xC0u8, *offset as u8])?,
+                    OpCode::GetGlobal { offset } => self.output_file.write(&[0xC1u8, *offset as u8])?,
 
-                    OpCode::DEBUG_PRINT => self.output_file.write(&[0xFFu8])?,
+                    OpCode::DefineLocal { offset } => self.output_file.write(&[0xC2u8, *offset as u8])?,
+                    OpCode::GetLocal { offset } => self.output_file.write(&[0xC3u8, *offset as u8])?,
+
+                    OpCode::DebugPrint => self.output_file.write(&[0xFFu8])?,
                 };
             }
         }

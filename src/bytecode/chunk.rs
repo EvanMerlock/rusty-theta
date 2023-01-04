@@ -44,9 +44,9 @@ impl Chunk {
         for opcode in other.instructions {
             match opcode {
                 // constant relocation
-                OpCode::CONSTANT { offset } => new_chunk.write_to_chunk(OpCode::CONSTANT { offset: offset + offset_size }),
-                OpCode::DEFINE_GLOBAL { offset } => new_chunk.write_to_chunk(OpCode::DEFINE_GLOBAL { offset: offset + offset_size }),
-                OpCode::GET_GLOBAL { offset } => new_chunk.write_to_chunk(OpCode::GET_GLOBAL { offset: offset + offset_size }),
+                OpCode::Constant { offset } => new_chunk.write_to_chunk(OpCode::Constant { offset: offset + offset_size }),
+                OpCode::DefineGlobal { offset } => new_chunk.write_to_chunk(OpCode::DefineGlobal { offset: offset + offset_size }),
+                OpCode::GetGlobal { offset } => new_chunk.write_to_chunk(OpCode::GetGlobal { offset: offset + offset_size }),
                 _ => new_chunk.write_to_chunk(opcode),
             }
         }

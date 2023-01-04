@@ -2,11 +2,15 @@ use std::error::Error;
 use std::fmt;
 
 mod basic;
+mod ident;
+mod parseinfo;
 
 #[cfg(test)]
 mod tests;
 
 pub use self::basic::*;
+pub use self::ident::*;
+pub use self::parseinfo::*;
 
 pub trait Parser {
 

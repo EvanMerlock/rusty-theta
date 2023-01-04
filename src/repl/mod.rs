@@ -1,8 +1,10 @@
+use std::cell::RefCell;
 use std::io::Cursor;
+use std::rc::Rc;
 
 use log::{LevelFilter, debug};
 
-use crate::ast::symbol::SymbolTable;
+use crate::ast::symbol::{SymbolTable, ExtSymbolTable};
 use crate::ast::transformers::typeck::TypeCk;
 use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
 use crate::bytecode::{BasicAssembler, Assembler, Disassembler, OpCode, Chunk};
@@ -10,7 +12,7 @@ use crate::{vm::{VM}, build_chunk, lexer::{BasicLexer, Lexer}, parser::{BasicPar
 
 pub struct Repl {
     machine: VM,
-    tbl: SymbolTable,
+    tbl: ExtSymbolTable,
 }
 
 pub enum ReplStatus {
@@ -22,7 +24,7 @@ impl Repl {
     pub fn init() -> Repl {
         Repl {
             machine: VM::new(),
-            tbl: SymbolTable::default(),
+            tbl: Rc::new(RefCell::new(SymbolTable::default())),
         }
     }
 
@@ -34,7 +36,7 @@ impl Repl {
                             debug!("Stack: {:?}", self.machine.stack());
                         },
                         "--ret" => {
-                            let chunks = vec![build_chunk!(OpCode::RETURN)];
+                            let chunks = vec![build_chunk!(OpCode::Return)];
                             {
                                 let mut code = Box::new(Cursor::new(Vec::new()));
                                 {
@@ -72,6 +74,7 @@ impl Repl {
                 let mut token_stream = tokens.into_iter();
                 let parser = BasicParser::new_sym(&mut token_stream, self.tbl.clone());
                 let (ast, sym) = parser.parse()?;
+                debug!("sym: {:?}", sym.borrow());
                 let type_cker = TypeCk::new(sym.clone());
                 self.tbl = sym;
                 let type_check = type_cker.transform(&ast)?;

@@ -265,7 +265,6 @@ impl<'a> Lexer for BasicLexer<'a> {
             }
 
             Some(c) => Err(LexerError::UnexpectedInput(c)),
-            None => Err(LexerError::UnexpectedEof),
         }
     }
 

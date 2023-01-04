@@ -305,6 +305,18 @@ impl Disassembler for VM {
                     }
                     offset += 2
                 },
+                0xC2 => { 
+                    debug!("Op: Define Local (0xC0) with offset: {}", chunk[offset+1] as usize);
+                    let li = chunk[offset+1] as usize;
+                    self.stack.set_local(li);
+                    offset += 2
+                },
+                0xC3 => { 
+                    debug!("Op: Read Local (0xC1) with offset: {}", chunk[offset+1] as usize);
+                    let li = chunk[offset+1] as usize;
+                    self.stack.push(self.stack.get_local(li).expect("local does not exist when it should").clone());
+                    offset += 2
+                },
                 0xFF => { 
                     debug!("Op: Print (0xFF)"); 
                     println!("{:?}", self.stack.pop()); 

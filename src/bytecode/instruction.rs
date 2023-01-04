@@ -4,21 +4,24 @@
 // rather than just a simple u8 seq in a chunk
 #[derive(Debug)]
 pub enum OpCode {
-    RETURN,
-    CONSTANT { offset: usize },
-    PUSH,
-    POP,
-    ADD,
-    SUBTRACT,
-    MULTIPLY,
-    DIVIDE,
-    NEGATE,
-    EQ,
-    GT,
-    LT,
+    Return,
+    Constant { offset: usize },
+    Push,
+    Pop,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Negate,
+    Equal,
+    GreaterThan,
+    LessThan,
 
-    DEFINE_GLOBAL { offset: usize },
-    GET_GLOBAL { offset: usize },
+    DefineGlobal { offset: usize },
+    GetGlobal { offset: usize },
 
-    DEBUG_PRINT,
+    DefineLocal { offset: usize },
+    GetLocal { offset: usize },
+
+    DebugPrint,
 }

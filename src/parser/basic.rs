@@ -1,61 +1,46 @@
-use std::{iter::Peekable, rc::Rc};
+use std::{iter::Peekable, rc::Rc, cell::RefCell};
 use log::{debug, error};
 
-use crate::ast::{AbstractTree, Expression, Statement, symbol::{SymbolTable, SymbolData}, transformers::typeck::TypeInformation};
-use super::Parser;
+use crate::{ast::{symbol::{SymbolTable, SymbolData, ExtSymbolTable}, transformers::{typeck::TypeInformation}, Statement, Expression, AbstractTree}, parser::Identifier};
+use super::{Parser, ParseInfo};
 use crate::lexer::token::{Token, TokenType};
-
-
-// TODO: PartialEq/Hash def. needs to only take into account raw token ident data.
-// Maybe have ID contain String ref and LocData 
-#[derive(PartialEq, Eq, Hash, Debug, Clone)]
-pub struct Identifier {
-    tk: Rc<String>
-}
-
-impl Identifier {
-    pub fn new(tk: Token) -> Result<Identifier, super::ParseError> {
-        match tk.ty() {
-            TokenType::Identifier(s) => Ok(Identifier { tk: Rc::new(s) }),
-            _ => Err(super::ParseError::from_other("Failed to assemble ident from token"))
-        }
-    }
-
-    pub fn id(&self) -> &String {
-        &self.tk
-    }
-}
-
-impl From<&'static str> for Identifier {
-    fn from(s: &'static str) -> Self {
-        Identifier { tk: Rc::new(String::from(s)) }
-    }
-}
-
-impl From<String> for Identifier {
-    fn from(s: String) -> Self {
-        Identifier { tk: Rc::new(s) }
-    }
-}
 
 pub struct BasicParser<'a> {
     tokens: Peekable<&'a mut dyn Iterator<Item = Token>>,
-    symbol_tbl: SymbolTable,
+    symbol_tbl: ExtSymbolTable,
+    root_symbol_tbl: ExtSymbolTable,
+    // used for functions
+    symbol_tables: Vec<ExtSymbolTable>,
 }
 
 // TODO: split up tokens that are operators into operator type by expression type.
 impl<'a> BasicParser<'a> {
     pub fn new(token_stream: &'a mut dyn Iterator<Item = Token>) -> BasicParser<'a> {
-        let symbol_table = SymbolTable::default();
+        let symbol_table = Rc::new(RefCell::new(SymbolTable::default()));
 
         BasicParser {
             tokens: token_stream.peekable(),
-            symbol_tbl: symbol_table,
+            symbol_tbl: symbol_table.clone(),
+            root_symbol_tbl: symbol_table.clone(),
+            symbol_tables: vec![symbol_table],
         }
     }
 
-    pub fn new_sym(token_stream: &'a mut dyn Iterator<Item = Token>, sym: SymbolTable) -> BasicParser<'a> {
-        BasicParser { tokens: token_stream.peekable(), symbol_tbl: sym }
+    pub fn new_sym(token_stream: &'a mut dyn Iterator<Item = Token>, sym: ExtSymbolTable) -> BasicParser<'a> {
+        BasicParser { 
+            tokens: token_stream.peekable(), 
+            symbol_tbl: sym.clone(),
+            root_symbol_tbl: sym.clone(),
+            symbol_tables: vec![sym],
+        }
+    }
+
+    fn begin_scope(&mut self) {
+        self.symbol_tbl.borrow_mut().inc_scope_depth();
+    }
+
+    fn end_scope(&mut self) {
+        self.symbol_tbl.borrow_mut().dec_scope_depth();
     }
 
     fn advance(&mut self) -> Option<Token> {
@@ -139,7 +124,7 @@ impl<'a> BasicParser<'a> {
         }
     }
 
-    fn declaration(&mut self) -> Result<Statement, super::ParseError> {
+    fn declaration(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
         debug!("read declaration");
         let stmt = if let Some(_var_tok) = self.match_token([TokenType::Let]) {
             self.var_declaration()
@@ -158,7 +143,7 @@ impl<'a> BasicParser<'a> {
         }
     }
 
-    fn var_declaration(&mut self) -> Result<Statement, super::ParseError> {
+    fn var_declaration(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
         debug!("read var declaration");
         let name = self.consume_if(|ty| ty.is_ident(), "Expected variable name")?;
 
@@ -179,8 +164,8 @@ impl<'a> BasicParser<'a> {
         let ident = Identifier::new(name)?;
         let ty_ident = Identifier::new(ty.expect("big issue; ty existed prev but not now"))?;
 
-        let ty_info = match self.symbol_tbl.get_symbol_data(&ty_ident) {
-            Some(SymbolData::Type { ty }) => ty.clone(),
+        let ty_info = match self.symbol_tbl.borrow().get_symbol_data(&ty_ident, self.symbol_tbl.borrow().scope_depth()) {
+            Some(SymbolData::Type { ty }) => ty,
             Some(_) => return Err(super::ParseError::from_other("ident is being used by something else")),
             // assume forward declaration here. if the type continues to not be defined via ID, we will error on compilation.
             None => TypeInformation::NonLiteral(ty_ident.clone()),
@@ -191,40 +176,71 @@ impl<'a> BasicParser<'a> {
         // if double `let` we should fail here, since that isn't valid (yet)
         // once a binding is created it can only be undone by exiting the scope the binding is valid in.
         // note that in a language with better bind semantics a rebind would be valid and could change the type of the variable
-        self.symbol_tbl.insert_symbol(ident.clone(), SymbolData::Variable { ty: ty_info });
+        let scope_depth = {
+            // hacky work around because we're using a RefCell here
+            self.symbol_tbl.borrow().scope_depth()
+        };
+        match scope_depth {
+            0 => {
+                self.symbol_tbl.borrow_mut().insert_symbol(ident.clone(), SymbolData::GlobalVariable { ty: ty_info });
+            },
+            sd => {
+                // symbol table does not do debouncing of symbols yet. need a combination of scope_depth and identifier to ensure variables cannot collide.
+                let li = self.symbol_tbl.borrow_mut().new_local();
+                // slot determined by # of seen variables
+                self.symbol_tbl.borrow_mut().insert_symbol(ident.clone(), SymbolData::LocalVariable { ty: ty_info, scope_level: sd, slot: li });
+            }
+        };
 
-        Ok(Statement::VarStatement { ident, init: init.expect("big issue; init existed prev but now now"), information: () })
+        Ok(Statement::VarStatement { ident, init: init.expect("big issue; init existed prev but now now"), information: ParseInfo::new(scope_depth, self.symbol_tbl.clone()) })
     }
 
-    fn statement(&mut self) -> Result<Statement, super::ParseError> {
+    fn statement(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
         debug!("read statement");
         if let Some(_print_tok) = self.match_token([TokenType::Identifier(String::from("print"))]) {
             self.print_statement()
+        } else if let Some(_block_ty) = self.match_token([TokenType::LeftBrace]) {
+            // block
+            self.begin_scope();
+            let bs = self.block_statement();
+            self.end_scope();
+            bs
         } else {
             self.expression_statement()
         }
     }
 
-    fn print_statement(&mut self) -> Result<Statement, super::ParseError> {
+    fn block_statement(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
+        debug!("read block");
+        let mut decls = Vec::new();
+        while self.match_token([TokenType::RightBrace, TokenType::Eof]).is_none() {
+            let decl = self.declaration()?;
+            decls.push(decl);
+        }
+
+        Ok(Statement::BlockStatement { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
+    }
+
+    fn print_statement(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
         debug!("read print statement");
         let expression = self.expression()?;
         self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
-        Ok(Statement::PrintStatement { expression, information: () })
+        Ok(Statement::PrintStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
     }
 
-    fn expression_statement(&mut self) -> Result<Statement, super::ParseError> {
+    fn expression_statement(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
         debug!("read expression statement");
         let expression = self.expression()?;
         self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
-        Ok(Statement::ExpressionStatement { expression, information: () })
+        Ok(Statement::ExpressionStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
     }
 
-    fn expression(&mut self) -> Result<Expression, super::ParseError> {
+    fn expression(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
         debug!("read expression");
         self.assignment() 
     }
 
-    fn assignment(&mut self) -> Result<Expression, super::ParseError> {
+    fn assignment(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
         debug!("read assignment");
         let lhs = self.equality()?;
 
@@ -233,9 +249,9 @@ impl<'a> BasicParser<'a> {
             let rhs = self.assignment()?;
 
             return match lhs {                
-                crate::ast::transformers::AugmentedExpression::Literal { literal, information } => {
+                Expression::Literal { literal, information: _ } => {
                     if let TokenType::Identifier(s) = literal.ty() {
-                        Ok(Expression::Assignment { name: Identifier::from(s), value: Box::new(rhs), information: () })
+                        Ok(Expression::Assignment { name: Identifier::from(s), value: Box::new(rhs), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
                     } else {
                         Err(super::ParseError::from_token(eq, "Invalid assignment target"))
                     }
@@ -247,7 +263,7 @@ impl<'a> BasicParser<'a> {
         Ok(lhs)
     }
 
-    fn equality(&mut self) -> Result<Expression, super::ParseError> {
+    fn equality(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
         debug!("read equality");
         let mut lhs = self.comparison()?;
 
@@ -257,14 +273,14 @@ impl<'a> BasicParser<'a> {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
-                information: (),
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()),
             };
         };
         
         Ok(lhs)
     }
 
-    fn comparison(&mut self) -> Result<Expression, super::ParseError> {
+    fn comparison(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
         debug!("read comparison");
         let mut lhs = self.term()?;
 
@@ -274,14 +290,14 @@ impl<'a> BasicParser<'a> {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
-                information: (),
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()),
             };
         }
 
         Ok(lhs)
     }
 
-    fn term(&mut self) -> Result<Expression, super::ParseError> {
+    fn term(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
         debug!("read term");
         let mut lhs = self.factor()?;
 
@@ -291,14 +307,14 @@ impl<'a> BasicParser<'a> {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
-                information: (),
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()),
             };
         }
 
         Ok(lhs)
     }
 
-    fn factor(&mut self) -> Result<Expression, super::ParseError> {
+    fn factor(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
         debug!("read factor");
         let mut lhs = self.unary()?;
 
@@ -308,27 +324,27 @@ impl<'a> BasicParser<'a> {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
-                information: ()
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone())
             };
         }
 
         Ok(lhs)
     }
 
-    fn unary(&mut self) -> Result<Expression, super::ParseError> {
+    fn unary(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
         debug!("read unary");
         if let Some(oper) = self.match_token([TokenType::Bang, TokenType::Minus]) {
             self.unary().map(|rhs| Expression::Unary {
                 operator: oper,
                 right: Box::new(rhs),
-                information: ()
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone())
             })
         } else {
             self.primary()
         }
     }
 
-    fn primary(&mut self) -> Result<Expression, super::ParseError> {
+    fn primary(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
         debug!("read primary");
         if self.match_token([TokenType::LeftParen]).is_some() {
             debug!("read seq");
@@ -346,23 +362,23 @@ impl<'a> BasicParser<'a> {
             
             Ok(Expression::Sequence {
                 seq: seq_expressions,
-                information: (),
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()),
             })
         } else {
             // needs to match literals only
             self
                 .advance()
                 .filter(|tk| tk.ty().is_literal())
-                .map(|tk| Expression::Literal { literal: tk, information: () })
+                .map(|tk| Expression::Literal { literal: tk, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
                 .ok_or_else(|| super::ParseError::from_other("Unexpected EOS"))
         }
     }
 }
 
 impl<'a> Parser for BasicParser<'a> {
-    type Out = Result<(AbstractTree, SymbolTable), super::ParseError>;
+    type Out = Result<(AbstractTree<ParseInfo>, ExtSymbolTable), super::ParseError>;
 
-    fn parse(mut self) -> Result<(AbstractTree, SymbolTable), super::ParseError> {
-        self.declaration().map(|stmt| (AbstractTree::statement(stmt, ()), self.symbol_tbl))
+    fn parse(mut self) -> Result<(AbstractTree<ParseInfo>, ExtSymbolTable), super::ParseError> {
+        self.declaration().map(|stmt| (AbstractTree::statement(stmt, ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone())), self.root_symbol_tbl))
     }
 }

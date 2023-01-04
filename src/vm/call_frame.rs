@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 use crate::bytecode::ThetaValue;
 
@@ -25,8 +25,8 @@ impl ThetaStack {
         self.frames.last_mut()
     }
 
-    pub fn push_frame(&mut self, params: Vec<ThetaValue>) {
-        self.frames.push(ThetaCallFrame::new(params));
+    pub fn push_frame(&mut self, params: Vec<ThetaValue>, locals_required: usize) {
+        self.frames.push(ThetaCallFrame::new(params, locals_required));
     }
 
     pub fn pop_frame(&mut self) -> Option<ThetaCallFrame> {
@@ -49,8 +49,24 @@ impl ThetaStack {
 
     pub fn peek(&self) -> Option<&ThetaValue> {
         match self.curr_frame() {
-            Some(frame) => frame.locals.get(frame.locals.len()-1),
-            None => self.top_level_locals.get(self.top_level_locals.len()-1)
+            Some(frame) => frame.locals.last(),
+            None => self.top_level_locals.last()
+        }
+    }
+
+    pub fn set_local(&mut self, li: usize) {
+        // this can set a local into a slot with no local in it. we need to allocate empty space in the vec on the fly
+        let tv = self.peek().expect("value not on stack").clone();
+        match self.curr_frame_mut() {
+            Some(frame) => frame.locals[li] = tv,
+            None => self.top_level_locals[li] = tv,
+        }
+    }
+
+    pub fn get_local(&self, li: usize) -> Option<&ThetaValue> {
+        match self.curr_frame() {
+            Some(frame) => frame.locals.get(li),
+            None => self.top_level_locals.get(li)
         }
     }
 
@@ -63,6 +79,12 @@ impl ThetaStack {
     }
 }
 
+impl Default for ThetaStack {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug)]
 pub struct ThetaCallFrame {
     // In THEORY the size of params and locals is always well known by the compiler in advanced
@@ -70,11 +92,12 @@ pub struct ThetaCallFrame {
     // This has extra redirection
     params: Vec<ThetaValue>,
     rip: usize,
+    // locals are uninitalized when created. we might need to make this an option and panic on fail
     locals: Vec<ThetaValue>,
 }
 
 impl ThetaCallFrame {
-    pub fn new(params: Vec<ThetaValue>) -> ThetaCallFrame {
-        ThetaCallFrame { params, rip: 0, locals: Vec::new() }
+    pub fn new(params: Vec<ThetaValue>, locals_required: usize) -> ThetaCallFrame {
+        ThetaCallFrame { params, rip: 0, locals: Vec::with_capacity(locals_required) }
     }
 }

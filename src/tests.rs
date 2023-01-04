@@ -14,7 +14,7 @@ macro_rules! literal {
         Box::new(Expression::Literal { literal: $token, information: () })
     };
     ($token:expr, $info:expr) => {
-        Box::new(AugmentedExpression::Literal { literal: $token, information: $info })
+        Box::new(Expression::Literal { literal: $token, information: $info })
     }
 }
 

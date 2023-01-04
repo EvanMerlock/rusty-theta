@@ -1,12 +1,14 @@
 use std::{fmt::{self, Debug}, error::Error};
 
-use super::{AugmentedAbstractTree, AugmentedExpression, typeck::TypeCkError, AugmentedStatement};
+use crate::ast::{AbstractTree, Expression, Statement};
+
+use super::{typeck::TypeCkError};
 
 pub trait ASTTransformer<T> where T: Debug + PartialEq {
 
     type Out;
 
-    fn transform(&self, tree: &AugmentedAbstractTree<T>) -> Result<Self::Out, TransformError>;
+    fn transform(&self, tree: &AbstractTree<T>) -> Result<Self::Out, TransformError>;
 
 }
 
@@ -14,16 +16,16 @@ pub trait ASTVisitor<T> where T: Debug + PartialEq {
 
     type InfoOut: Debug + PartialEq;
 
-    fn visit_expression(&self, expr: &AugmentedExpression<T>) -> Result<AugmentedExpression<Self::InfoOut>, TransformError>;
-    fn visit_statement(&self, stmt: &AugmentedStatement<T>) -> Result<AugmentedStatement<Self::InfoOut>, TransformError>;
+    fn visit_expression(&self, expr: &Expression<T>) -> Result<Expression<Self::InfoOut>, TransformError>;
+    fn visit_statement(&self, stmt: &Statement<T>) -> Result<Statement<Self::InfoOut>, TransformError>;
 }
 
 pub trait ASTTerminator<T> where T: Debug + PartialEq {
 
     type Out;
 
-    fn visit_expression(&self, expr: &AugmentedExpression<T>) -> Result<Self::Out, TransformError>;
-    fn visit_statement(&self, stmt: &AugmentedStatement<T>) -> Result<Self::Out, TransformError>;
+    fn visit_expression(&self, expr: &Expression<T>) -> Result<Self::Out, TransformError>;
+    fn visit_statement(&self, stmt: &Statement<T>) -> Result<Self::Out, TransformError>;
 
 
 }
