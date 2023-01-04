@@ -4,6 +4,9 @@ use crate::lexer::token::{Token, TokenType};
 
 // TODO: PartialEq/Hash def. needs to only take into account raw token ident data.
 // Maybe have ID contain String ref and LocData 
+// TODO: Rename to "Symbol" and move to it's own package.
+// prior art: Ruby's symbols: https://ruby-doc.org/core-2.5.0/Symbol.html
+// this makes more logical sense. We can also intern IDs like we would intern strings in the VM.
 #[derive(PartialEq, Eq, Hash, Debug, Clone)]
 pub struct Identifier {
     tk: Rc<String>
