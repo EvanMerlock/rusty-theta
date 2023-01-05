@@ -1,7 +1,7 @@
 use std::{iter::Peekable, rc::Rc, cell::RefCell};
 use log::{debug, error};
 
-use crate::{ast::{symbol::{SymbolTable, SymbolData, ExtSymbolTable}, transformers::{typeck::TypeInformation}, Statement, Expression, AbstractTree}, parser::Identifier};
+use crate::{ast::{symbol::{SymbolTable, SymbolData, ExtSymbolTable}, transformers::{typeck::TypeInformation}, Statement, Expression, AbstractTree}, bytecode::Symbol};
 use super::{Parser, ParseInfo};
 use crate::lexer::token::{Token, TokenType};
 
@@ -163,8 +163,8 @@ impl<'a> BasicParser<'a> {
             return Err(super::ParseError::from_other("Expected expression and variable type"));
         }
 
-        let ident = Identifier::new(name)?;
-        let ty_ident = Identifier::new(ty.expect("big issue; ty existed prev but not now"))?;
+        let ident = Symbol::new(name)?;
+        let ty_ident = Symbol::new(ty.expect("big issue; ty existed prev but not now"))?;
 
         let ty_info = match self.symbol_tbl.borrow().get_symbol_data(&ty_ident, self.symbol_tbl.borrow().scope_depth()) {
             Some(SymbolData::Type { ty }) => ty,
@@ -253,7 +253,7 @@ impl<'a> BasicParser<'a> {
             return match lhs {                
                 Expression::Literal { literal, information: _ } => {
                     if let TokenType::Identifier(s) = literal.ty() {
-                        Ok(Expression::Assignment { name: Identifier::from(s), value: Box::new(rhs), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
+                        Ok(Expression::Assignment { name: Symbol::from(s), value: Box::new(rhs), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
                     } else {
                         Err(super::ParseError::from_token(eq, "Invalid assignment target"))
                     }

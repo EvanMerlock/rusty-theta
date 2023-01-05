@@ -1,10 +1,6 @@
-
-use std::rc::Rc;
-
 use crate::ast::symbol::SymbolData;
 use crate::ast::{Expression, Statement, AbstractTree, InnerAbstractTree};
-use crate::bytecode::{Chunk, OpCode, ThetaValue, ThetaHeapValue, ThetaConstant};
-use crate::parser::Identifier;
+use crate::bytecode::{Chunk, OpCode, ThetaConstant, Symbol};
 use crate::{build_chunk, lexer::token};
 
 use super::typeck::TypeCkOutput;
@@ -94,7 +90,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                             build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaConstant::Str(id))
                         },
                         sd => {
-                            let local = info.pi.current_symbol_table.borrow().get_symbol_data(&Identifier::from(id), sd).expect("local not found");
+                            let local = info.pi.current_symbol_table.borrow().get_symbol_data(&Symbol::from(id), sd).expect("local not found");
                             match local {
                                 SymbolData::Type { ty: _ } => panic!("non local in local pos"),
                                 SymbolData::GlobalVariable { ty: _ } => panic!("non local in local pos"),

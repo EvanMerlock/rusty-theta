@@ -2,14 +2,12 @@ use std::error::Error;
 use std::fmt;
 
 mod basic;
-mod ident;
 mod parseinfo;
 
 #[cfg(test)]
 mod tests;
 
 pub use self::basic::*;
-pub use self::ident::*;
 pub use self::parseinfo::*;
 
 pub trait Parser {
@@ -39,7 +37,7 @@ impl ParseError {
         }
     }
 
-    fn from_other(msg: &'static str) -> ParseError {
+    pub fn from_other(msg: &'static str) -> ParseError {
         ParseError::Other {
             msg
         }

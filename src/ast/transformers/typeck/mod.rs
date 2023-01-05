@@ -3,7 +3,7 @@ use std::{error::Error, fmt::Display};
 use log::{debug, error, trace};
 
 use super::{ASTTransformer, ASTVisitor, TransformError};
-use crate::{ast::{symbol::{ExtSymbolTable, SymbolData}, AbstractTree, InnerAbstractTree, Expression, Statement}, lexer::token::{TokenType, Token}, parser::{Identifier, ParseInfo}};
+use crate::{ast::{symbol::{ExtSymbolTable, SymbolData}, AbstractTree, InnerAbstractTree, Expression, Statement}, lexer::token::{TokenType, Token}, parser::{ParseInfo}, bytecode::Symbol};
 
 pub struct TypeCk {
     symbol_table: ExtSymbolTable
@@ -19,9 +19,9 @@ impl TypeCk {
 pub enum TypeCkError {
     ExpressionBinaryTypeCkFail(TypeInformation, TypeInformation, Token),
     ExpressionUnaryTypeCkFail(TypeInformation, Token),
-    TypeNotFound(Identifier),
-    InvalidTypeInPosition(Identifier),
-    IncorrectInitializer(Identifier),
+    TypeNotFound(Symbol),
+    InvalidTypeInPosition(Symbol),
+    IncorrectInitializer(Symbol),
     InvalidAssignment(TypeInformation, TypeInformation),
 }
 
@@ -60,7 +60,7 @@ pub enum TypeInformation {
     String,
     Float,
     Boolean,
-    NonLiteral(Identifier),
+    NonLiteral(Symbol),
     None,
 }
 
@@ -179,7 +179,7 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                     TokenType::Integer(_) => Ok(Expression::Literal { literal: literal.clone(), information: TypeCkOutput { ty: TypeInformation::Int, pi: info.clone() } }),
                     TokenType::Float(_) => Ok(Expression::Literal { literal: literal.clone(), information: TypeCkOutput { ty: TypeInformation::Float, pi: info.clone() } }),
                     TokenType::Identifier(id) => { 
-                        let id = Identifier::from(id);
+                        let id = Symbol::from(id);
                         Ok(
                             Expression::Literal { 
                                 literal: literal.clone(), 

@@ -1,15 +1,13 @@
 use std::{collections::{HashMap, hash_map::Entry}, rc::Rc, cell::RefCell};
 
-use log::debug;
-
-use crate::{parser::Identifier};
+use crate::bytecode::Symbol;
 
 use super::transformers::typeck::TypeInformation;
 
 pub type ExtSymbolTable = Rc<RefCell<SymbolTable>>;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub struct SymbolKey(usize, Identifier);
+pub struct SymbolKey(usize, Symbol);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SymbolTable {
@@ -28,7 +26,7 @@ impl SymbolTable {
         SymbolTable { entries: HashMap::new(), enclosing: Some(enclosing), scope_depth: 0, total_locals: 0 }
     }
 
-    pub fn insert_symbol(&mut self, tk: Identifier, data: SymbolData) -> usize {
+    pub fn insert_symbol(&mut self, tk: Symbol, data: SymbolData) -> usize {
         self.entries.insert(SymbolKey(self.scope_depth, tk), data);
         self.scope_depth
     }
@@ -63,7 +61,7 @@ impl SymbolTable {
         self.total_locals
     }
 
-    pub fn get_symbol_data(&self, tk: &Identifier, sd: usize) -> Option<SymbolData> {
+    pub fn get_symbol_data(&self, tk: &Symbol, sd: usize) -> Option<SymbolData> {
         // chain upward through the environment as necessary.
         match self.entries.get(&SymbolKey(sd, tk.clone())) {
             Some(ent) => Some(ent.clone()),
@@ -88,10 +86,10 @@ impl SymbolTable {
 impl Default for SymbolTable {
     fn default() -> Self {
         let mut symbol_table = Self::new();
-        symbol_table.insert_symbol(Identifier::from("Int"), SymbolData::Type { ty: TypeInformation::Int });
-        symbol_table.insert_symbol(Identifier::from("String"), SymbolData::Type { ty: TypeInformation::String });
-        symbol_table.insert_symbol(Identifier::from("Bool"), SymbolData::Type { ty: TypeInformation::Boolean });
-        symbol_table.insert_symbol(Identifier::from("Float"), SymbolData::Type { ty: TypeInformation::Float });
+        symbol_table.insert_symbol(Symbol::from("Int"), SymbolData::Type { ty: TypeInformation::Int });
+        symbol_table.insert_symbol(Symbol::from("String"), SymbolData::Type { ty: TypeInformation::String });
+        symbol_table.insert_symbol(Symbol::from("Bool"), SymbolData::Type { ty: TypeInformation::Boolean });
+        symbol_table.insert_symbol(Symbol::from("Float"), SymbolData::Type { ty: TypeInformation::Float });
         symbol_table
     }
 }

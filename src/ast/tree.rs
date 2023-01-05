@@ -1,4 +1,4 @@
-use crate::{lexer::token::Token, parser::Identifier};
+use crate::{lexer::token::Token, bytecode::Symbol};
 use std::fmt::Debug;
 
 #[derive(Debug, PartialEq)]
@@ -60,7 +60,7 @@ pub enum Expression<T> where T: Debug + PartialEq {
     },
     // TODO: name will become an lvalue
     Assignment {
-        name: Identifier,
+        name: Symbol,
         value: Box<Expression<T>>,
         information: T
     }
@@ -99,7 +99,7 @@ pub enum Statement<T> where T: Debug + PartialEq {
         information: T
     },
     VarStatement {
-        ident: Identifier,
+        ident: Symbol,
         init: Expression<T>,
         information: T,
     },
