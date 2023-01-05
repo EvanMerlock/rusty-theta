@@ -132,7 +132,8 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                     (Err(e), Ok(_)) => {
                         return Err(e);
                     },
-                    (Err(el), Err(er)) => {
+                    (Err(el), Err(_er)) => {
+                        // TODO: merge errors
                         return Err(el);
                     },
                 };

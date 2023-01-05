@@ -86,6 +86,7 @@ impl Default for ThetaStack {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct ThetaCallFrame {
     // In THEORY the size of params and locals is always well known by the compiler in advanced
     // We would need a custom allocating collection in order to do this.

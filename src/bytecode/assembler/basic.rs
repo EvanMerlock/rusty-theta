@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use crate::bytecode::{
-    Chunk, OpCode, ThetaConstant, ThetaHeapValue, ThetaValue, BOOL_MARKER, CHUNK_HEADER,
+    Chunk, OpCode, ThetaConstant, BOOL_MARKER, CHUNK_HEADER,
     CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, STRING_MARKER,
 };
 

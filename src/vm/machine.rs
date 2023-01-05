@@ -1,4 +1,4 @@
-use std::{rc::Rc, collections::{HashMap, HashSet}};
+use std::{rc::Rc, collections::HashMap};
 
 use log::debug;
 
@@ -162,9 +162,11 @@ impl Disassembler for VM {
                     offset += 2 
                 },
                 0x2 => { 
-                    debug!("Op: Push (0x2)"); 
+                    debug!("Op: Push (0x2)");
+                    // TODO: what the heck is this supposed to push onto the stack?
+                    // Should it take in a heap value and push a pointer to that heap value to the stack? 
                     todo!();
-                    offset += 1 
+                    // offset += 1 
                 },
                 0x3 => { 
                     debug!("Op: Pop (0x3)"); 

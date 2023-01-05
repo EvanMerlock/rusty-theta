@@ -1,4 +1,4 @@
-use super::{OpCode, ThetaValue, ThetaConstant};
+use super::{OpCode, ThetaConstant};
 
 pub const CHUNK_HEADER: [u8; 8] = [84, 104, 101, 67, 104, 117, 110, 107];
 
