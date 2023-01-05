@@ -73,7 +73,7 @@ impl Disassembler for StringDisassembler {
                     offset += len;
                     readout.push_str(&format!("Constant: {}\r\n", read_str));
                 }
-                _ => panic!("invalid marker found in chunk"),
+                _ => return Err(DisassembleError::InvalidMarkerInChunk(marker.to_owned())),
             }
         }
         

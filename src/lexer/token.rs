@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::hash::Hash;
 
 lazy_static! {
@@ -51,11 +52,23 @@ impl Token {
     }
 }
 
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} - {}", self.1, self.0)
+    }
+}
+
 #[derive(PartialEq, Debug, Clone, Hash, Eq)]
 struct LocationData {
     line_num: usize,
     tok_begin: usize,
     tok_end: usize
+}
+
+impl Display for LocationData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Located at line {}, char {} ending {}", self.line_num, self.tok_begin, self.tok_end)
+    }
 }
 
 // TODO:
@@ -90,5 +103,52 @@ impl TokenType {
 
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Identifier(_))
+    }
+}
+
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TokenType::LeftParen => write!(f, "("),
+            TokenType::RightParen => write!(f, ")"),
+            TokenType::LeftBrace => write!(f, "{{"),
+            TokenType::RightBrace => write!(f, "}}"),
+            TokenType::Comma => write!(f, ","),
+            TokenType::Dot => write!(f, "."),
+            TokenType::Minus => write!(f, "-"),
+            TokenType::Plus => write!(f, "+"),
+            TokenType::Semicolon => write!(f, ";"),
+            TokenType::Slash => write!(f, "/"),
+            TokenType::Star => write!(f, "*"),
+            TokenType::Colon => write!(f, ":"),
+            TokenType::Arrow => write!(f, "->"),
+            TokenType::Bang => write!(f, "!"),
+            TokenType::BangEqual => write!(f, "!="),
+            TokenType::Equal => write!(f, "="),
+            TokenType::EqualEqual => write!(f, "=="),
+            TokenType::Greater => write!(f, ">"),
+            TokenType::GreaterEqual => write!(f, ">="),
+            TokenType::Less => write!(f, "<"),
+            TokenType::LessEqual => write!(f, "<="),
+            TokenType::Identifier(id) => write!(f, "ID: {}", id),
+            TokenType::Str(s) => write!(f, "String: {}", s),
+            TokenType::Integer(i) => write!(f, "Int: {}", i),
+            TokenType::Float(fl) => write!(f, "Float: {},", fl),
+            TokenType::And => write!(f, "&&"),
+            TokenType::Class => write!(f, "class"),
+            TokenType::Else => write!(f, "else"),
+            TokenType::False => write!(f, "false"),
+            TokenType::Fun => write!(f, "fun"),
+            TokenType::For => write!(f, "for"),
+            TokenType::If => write!(f, "if"),
+            TokenType::Or => write!(f, "||"),
+            TokenType::Return => write!(f, "return"),
+            TokenType::Super => write!(f, "super"),
+            TokenType::This => write!(f, "this"),
+            TokenType::True => write!(f, "true"),
+            TokenType::Let => write!(f, "let"),
+            TokenType::While => write!(f, "while"),
+            TokenType::Eof => write!(f, "EOF"),
+        }
     }
 }

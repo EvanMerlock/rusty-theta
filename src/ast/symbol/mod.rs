@@ -3,6 +3,7 @@ use std::{collections::{HashMap, hash_map::Entry}, rc::Rc, cell::RefCell};
 use crate::bytecode::Symbol;
 
 use super::transformers::typeck::TypeInformation;
+use crate::parser::ParseError;
 
 pub type ExtSymbolTable = Rc<RefCell<SymbolTable>>;
 
@@ -43,12 +44,13 @@ impl SymbolTable {
         self.scope_depth
     }
 
-    pub fn dec_scope_depth(&mut self) {
+    pub fn dec_scope_depth(&mut self) -> Result<(), ParseError> {
         if self.scope_depth > 0 {
             self.scope_depth -= 1;
         } else {
-            panic!("bad scope depth dec");
+            return Err(ParseError::from_other("bad scope dec"));
         }
+        Ok(())
     }
 
     pub fn new_local(&mut self) -> usize {

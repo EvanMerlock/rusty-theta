@@ -7,13 +7,10 @@ pub enum LexerError {
     UnexpectedEof,
     UnexpectedInput(char),
     UnterminatedString(usize, usize),
+    ExtraCommentTermination,
 }
 
-impl Error for LexerError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-}
+impl Error for LexerError {}
 
 impl Display for LexerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -21,6 +18,7 @@ impl Display for LexerError {
             LexerError::UnexpectedEof => write!(f, "Unexpected EOF encountered"),
             LexerError::UnexpectedInput(c) => write!(f, "Unexpected input {}", c),
             LexerError::UnterminatedString(line_num, _) => write!(f, "Unterminated string beginning on line {}", line_num),
+            LexerError::ExtraCommentTermination => write!(f, "An additional comment termination was found"),
         }
     }
 }
@@ -152,12 +150,13 @@ impl<'a> BasicLexer<'a> {
         self.comment_level += 1;
     }
 
-    fn dec_comment_level(&mut self) {
+    fn dec_comment_level(&mut self) -> Result<(), LexerError> {
         if self.comment_level == 0 {
-            panic!("Cannot reduce comment level below 0");
+            return Err(LexerError::ExtraCommentTermination);
         } else {
             self.comment_level -= 1;
         }
+        Ok(())
     }
 
 }
@@ -181,7 +180,7 @@ impl<'a> Lexer for BasicLexer<'a> {
 
             Some('*') if self.comment_level > 0 => {
                 if self.match_char('/') {
-                    self.dec_comment_level();
+                    self.dec_comment_level()?;
                 }
                 Ok(None)
             },

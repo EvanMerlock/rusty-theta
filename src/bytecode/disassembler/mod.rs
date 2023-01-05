@@ -16,23 +16,21 @@ pub enum DisassembleError {
     IOError(std::io::Error),
     TryFromSliceError(std::array::TryFromSliceError),
     Utf8Error(std::string::FromUtf8Error),
+    InvalidMarkerInChunk(Vec<u8>),
 }
 
 impl fmt::Display for DisassembleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        match self {
+            DisassembleError::IOError(io) => write!(f, "I/O error: {}", io),
+            DisassembleError::TryFromSliceError(tfs) => write!(f, "Could not get item from slice: {}", tfs),
+            DisassembleError::Utf8Error(utf) => write!(f, "UTF-8 error: {}", utf),
+            DisassembleError::InvalidMarkerInChunk(marker) => write!(f, "invalid marker: [{}, {}]", marker[0], marker[1]),
+        }
     }
 }
 
-impl Error for DisassembleError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-
-    fn cause(&self) -> Option<&dyn Error> {
-        self.source()
-    }
-}
+impl Error for DisassembleError {}
 
 impl From<std::io::Error> for DisassembleError {
     fn from(err: std::io::Error) -> Self {

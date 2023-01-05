@@ -21,6 +21,7 @@ pub enum TypeCkError {
     ExpressionUnaryTypeCkFail(TypeInformation, Token),
     TypeNotFound(Symbol),
     InvalidTypeInPosition(Symbol),
+    InvalidLiteralInPosition(Token),
     IncorrectInitializer(Symbol),
     InvalidAssignment(TypeInformation, TypeInformation),
 }
@@ -38,12 +39,13 @@ impl Error for TypeCkError {
 impl Display for TypeCkError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeCkError::ExpressionBinaryTypeCkFail(l_ty, r_ty, oper) => write!(f, "Type Mismatch! Left Ty: {:?}, Right Ty: {:?}, Oper: {:?}", l_ty, r_ty, oper),
-            TypeCkError::ExpressionUnaryTypeCkFail(r_ty, oper) => write!(f, "Type Mismatch! Right Ty: {:?}, Oper: {:?}", r_ty, oper),
-            TypeCkError::TypeNotFound(ident) => write!(f, "Type not found for variable: {:?}", ident),
-            TypeCkError::InvalidTypeInPosition(ident) => write!(f, "!! A type was sent where a variable name was expected: {:?} !!", ident),
-            TypeCkError::IncorrectInitializer(ident) => write!(f, "Incorrect initializer for identifier: {:?}", ident),
-            TypeCkError::InvalidAssignment(lhs, rhs) => write!(f, "Invalid assignment; LHS = {:?}, RHS = {:?} and there is no type-unity", lhs, rhs),
+            TypeCkError::ExpressionBinaryTypeCkFail(l_ty, r_ty, oper) => write!(f, "Type Mismatch! Left Ty: {}, Right Ty: {}, Oper: {}", l_ty, r_ty, oper),
+            TypeCkError::ExpressionUnaryTypeCkFail(r_ty, oper) => write!(f, "Type Mismatch! Right Ty: {}, Oper: {}", r_ty, oper),
+            TypeCkError::TypeNotFound(ident) => write!(f, "Type not found for variable: {}", ident),
+            TypeCkError::InvalidTypeInPosition(ident) => write!(f, "!! A type was sent where a variable name was expected: {} !!", ident),
+            TypeCkError::IncorrectInitializer(ident) => write!(f, "Incorrect initializer for identifier: {}", ident),
+            TypeCkError::InvalidAssignment(lhs, rhs) => write!(f, "Invalid assignment; LHS = {}, RHS = {} and there is no type-unity", lhs, rhs),
+            TypeCkError::InvalidLiteralInPosition(tk) => write!(f, "!! A non-literal token was found where a literal was expected: {} !!", tk),
         }
     }
 }
@@ -64,26 +66,51 @@ pub enum TypeInformation {
     None,
 }
 
+impl Display for TypeInformation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TypeInformation::Int => write!(f, "Int"),
+            TypeInformation::String => write!(f, "String"),
+            TypeInformation::Float => write!(f, "Float"),
+            TypeInformation::Boolean => write!(f, "Boolean"),
+            TypeInformation::NonLiteral(s) => write!(f, "{}", s),
+            TypeInformation::None => write!(f, "!"),
+        }
+    }
+}
+
 impl ASTTransformer<ParseInfo> for TypeCk {
 
     type Out = AbstractTree<TypeCkOutput>;
 
     fn transform(&self, tree: &AbstractTree<ParseInfo>) -> Result<Self::Out, super::TransformError> {
         trace!("Symbol Table: {:#?}", self.symbol_table);
-        Ok(match tree.inner() {
+        match tree.inner() {
             InnerAbstractTree::Expression(expr) => { 
-                let ty_aug = self.visit_expression(&expr.0)?;
+                let ty_aug = match self.visit_expression(&expr.0) {
+                    Ok(ty) => ty,
+                    Err(e) => {
+                        error!("{}", e);
+                        return Err(e);
+                    },
+                };
                 let info = ty_aug.information().clone();
                 debug!("Completed TypeCk on Expr w/ Type: {:?}", info);
-                AbstractTree::expression(ty_aug, info)
+                Ok(AbstractTree::expression(ty_aug, info))
             },
             InnerAbstractTree::Statement(stmt) => {
-                let ty_aug = self.visit_statement(&stmt.0)?;
+                let ty_aug = match self.visit_statement(&stmt.0) {
+                    Ok(ty) => ty,
+                    Err(e) => {
+                        error!("{}", e);
+                        return Err(e);
+                    },
+                };                
                 let info = ty_aug.information().clone();
                 debug!("Completed TypeCk on Stmt w/ Type: {:?}", info);
-                AbstractTree::statement(ty_aug, info)
+                Ok(AbstractTree::statement(ty_aug, info))
             },
-        })
+        }
     }
 
 }
@@ -100,15 +127,12 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                 let (left_ty, right_ty) = match (left_ty_res, right_ty_res) {
                     (Ok(lty), Ok(rty)) => (lty, rty),
                     (Ok(_), Err(e)) => {
-                        error!("When typechecking on line {}, right type is invalid: {}", operator.line_num(), e);
                         return Err(e);
                     },
                     (Err(e), Ok(_)) => {
-                        error!("When typechecking on line {}, left type is invalid: {}", operator.line_num(), e);
                         return Err(e);
                     },
                     (Err(el), Err(er)) => {
-                        error!("When typechecking on line {}, left type is invalid: {}; right type is invalid: {}", operator.line_num(), el, er);
                         return Err(el);
                     },
                 };
@@ -144,7 +168,6 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                     (TypeInformation::Float, TypeInformation::Float, TokenType::GreaterEqual) => TypeInformation::Boolean,
 
                     _ => {
-                        error!("Type Mismatch! {:?} and {:?} do not have an implementation of {:?}", *left_ty.information(), *right_ty.information(), operator.clone());
                         return Err(TransformError::from(TypeCkError::ExpressionBinaryTypeCkFail(left_ty.information().ty.clone(), right_ty.information().ty.clone(), operator.clone()))) 
                     },
                 };
@@ -157,7 +180,6 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                 let r_ty = match r_ty_res {
                     Ok(rty) => rty,
                     Err(e) => {
-                        error!("When typechecking on line {}, unary operator type is invalid: {}", operator.line_num(), e);
                         return Err(e);
                     },
                 };
@@ -191,7 +213,7 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                         ) },
                     TokenType::True => Ok(Expression::Literal { literal: literal.clone(), information: TypeCkOutput { ty: TypeInformation::Boolean, pi: info.clone() } }),
                     TokenType::False => Ok(Expression::Literal { literal: literal.clone(), information: TypeCkOutput { ty: TypeInformation::Boolean, pi: info.clone() } }),
-                    _ => panic!("a non-literal token was in a literal position."),
+                    _ => Err(TransformError::from(TypeCkError::InvalidLiteralInPosition(literal.clone()))),
                 }
             },
             Expression::Sequence { seq, information: _ } => {

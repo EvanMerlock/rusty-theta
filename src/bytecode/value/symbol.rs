@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, fmt::Display};
 
 use crate::{lexer::token::{Token, TokenType}, parser::ParseError};
 
@@ -34,5 +34,11 @@ impl From<&'static str> for Symbol {
 impl From<String> for Symbol {
     fn from(s: String) -> Self {
         Symbol { tk: Rc::new(s) }
+    }
+}
+
+impl Display for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "#{}", self.tk)
     }
 }

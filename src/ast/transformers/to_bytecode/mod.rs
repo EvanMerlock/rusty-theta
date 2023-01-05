@@ -1,10 +1,13 @@
+use std::error::Error;
+use std::fmt::Display;
+
 use crate::ast::symbol::SymbolData;
 use crate::ast::{Expression, Statement, AbstractTree, InnerAbstractTree};
 use crate::bytecode::{Chunk, OpCode, ThetaConstant, Symbol};
 use crate::{build_chunk, lexer::token};
 
 use super::typeck::TypeCkOutput;
-use super::{ASTTerminator, ASTTransformer};
+use super::{ASTTerminator, ASTTransformer, TransformError};
 
 pub struct ToByteCode;
 
@@ -28,7 +31,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
     fn visit_expression(
         &self,
         expr: &Expression<TypeCkOutput>,
-    ) -> Result<Self::Out, super::TransformError> {
+    ) -> Result<Self::Out, TransformError> {
         Ok(match expr {
             Expression::Binary {
                 left,
@@ -50,9 +53,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     token::TokenType::GreaterEqual => build_chunk!(OpCode::Add),
                     token::TokenType::EqualEqual => build_chunk!(OpCode::Equal),
                     token::TokenType::BangEqual => build_chunk!(OpCode::Equal, OpCode::Negate),
-                    _ => panic!(
-                        "invalid token in binary precedence when visiting for bytecode transform"
-                    ),
+                    _ => return Err(TransformError::from(ToByteCodeError::InvalidToken(format!("in binary precedence: {}", operator)))),
                 };
                 res_chunk.merge_chunk(op_chunk)
             }
@@ -62,9 +63,8 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 let right_val = ToByteCode.visit_expression(right)?;
                 let op_chunk = match operator.ty() {
                     token::TokenType::Minus => build_chunk!(OpCode::Negate),
-                    _ => panic!(
-                        "invalid token in binary precedence when visiting for bytecode transform"
-                    ),
+                    _ => return Err(TransformError::from(ToByteCodeError::InvalidToken(format!("in unary precedence: {}", operator)))),
+
                 };
                 right_val.merge_chunk(op_chunk)
             }
@@ -90,20 +90,20 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                             build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaConstant::Str(id))
                         },
                         sd => {
-                            let local = info.pi.current_symbol_table.borrow().get_symbol_data(&Symbol::from(id), sd).expect("local not found");
+                            let local = info.pi.current_symbol_table.borrow().get_symbol_data(&Symbol::from(id.clone()), sd);
                             match local {
-                                SymbolData::Type { ty: _ } => panic!("non local in local pos"),
-                                SymbolData::GlobalVariable { ty: _ } => panic!("non local in local pos"),
-                                SymbolData::LocalVariable { ty: _, scope_level: _, slot } => {
+                                Some(SymbolData::Type { ty: _ }) => return Err(TransformError::from(ToByteCodeError::InvalidLocal(id))),
+                                Some(SymbolData::GlobalVariable { ty: _ }) => return Err(TransformError::from(ToByteCodeError::InvalidLocal(id))),
+                                Some(SymbolData::LocalVariable { ty: _, scope_level: _, slot }) => {
                                     build_chunk!(OpCode::GetLocal { offset: slot })
                                 },
+                                None => return Err(TransformError::from(ToByteCodeError::NoIdentFound(id)))
                             }
                         }
                     }
                 },
-                _ => {
-                    panic!("invalid token in literal location when visiting for bytecode transform")
-                }
+                _ => return Err(TransformError::from(ToByteCodeError::InvalidToken(format!("when expected literal: {}", literal)))),
+
             },
             Expression::Sequence { seq, .. } => {
                 seq.iter()
@@ -153,14 +153,15 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     sd => {
                         // emit local when sd > 0
                         let init_chunk = self.visit_expression(init)?;
-                        let local = info.pi.current_symbol_table.borrow().get_symbol_data(ident, sd).expect("local not found");
+                        let local = info.pi.current_symbol_table.borrow().get_symbol_data(ident, sd);
                         match local {
-                            SymbolData::Type { ty: _ } => panic!("non local in local pos"),
-                            SymbolData::GlobalVariable { ty: _ } => panic!("non local in local pos"),
-                            SymbolData::LocalVariable { ty: _, scope_level: _, slot } => {
+                            Some(SymbolData::Type { ty: _ }) => return Err(TransformError::from(ToByteCodeError::InvalidLocal(ident.id().clone()))),
+                            Some(SymbolData::GlobalVariable { ty: _ }) => return Err(TransformError::from(ToByteCodeError::InvalidLocal(ident.id().clone()))),
+                            Some(SymbolData::LocalVariable { ty: _, scope_level: _, slot }) => {
                                 let glob_chunk = build_chunk!(OpCode::DefineLocal { offset: slot });
                                 Ok(init_chunk.merge_chunk(glob_chunk))
                             },
+                            None => return Err(TransformError::from(ToByteCodeError::NoIdentFound(ident.id().clone())))
                         }
                     },
                 }
@@ -183,3 +184,22 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
         }
     }
 }
+
+#[derive(Debug)]
+pub enum ToByteCodeError {
+    InvalidToken(String),
+    InvalidLocal(String),
+    NoIdentFound(String),
+}
+
+impl Display for ToByteCodeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ToByteCodeError::InvalidToken(s) => write!(f, "Invalid Token: {}", s),
+            ToByteCodeError::InvalidLocal(s) => write!(f, "Invalid Local with Identifier: {}", s),
+            ToByteCodeError::NoIdentFound(s) => write!(f, "No identifier found with name {}", s),
+        }
+    }
+}
+
+impl Error for ToByteCodeError {}

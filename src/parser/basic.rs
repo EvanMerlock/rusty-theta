@@ -2,7 +2,7 @@ use std::{iter::Peekable, rc::Rc, cell::RefCell};
 use log::{debug, error};
 
 use crate::{ast::{symbol::{SymbolTable, SymbolData, ExtSymbolTable}, transformers::{typeck::TypeInformation}, Statement, Expression, AbstractTree}, bytecode::Symbol};
-use super::{Parser, ParseInfo};
+use super::{Parser, ParseInfo, ParseError};
 use crate::lexer::token::{Token, TokenType};
 
 pub struct BasicParser<'a> {
@@ -41,8 +41,8 @@ impl<'a> BasicParser<'a> {
         self.symbol_tbl.borrow_mut().inc_scope_depth();
     }
 
-    fn end_scope(&mut self) {
-        self.symbol_tbl.borrow_mut().dec_scope_depth();
+    fn end_scope(&mut self) -> Result<(), ParseError> {
+        self.symbol_tbl.borrow_mut().dec_scope_depth()
     }
 
     fn advance(&mut self) -> Option<Token> {
@@ -60,22 +60,22 @@ impl<'a> BasicParser<'a> {
         }
     }
 
-    fn consume(&mut self, tt: TokenType, msg: &'static str) -> Result<Token, super::ParseError> {
+    fn consume(&mut self, tt: TokenType, msg: &'static str) -> Result<Token, ParseError> {
         if self.check(&tt) {
-            self.advance().ok_or_else(|| super::ParseError::from_other("Unexpected EOS"))
+            self.advance().ok_or_else(|| ParseError::from_other("Unexpected EOS"))
         } else {
             match self.peek() {
-                Some(tok) => Err(super::ParseError::from_token(tok.clone(), msg)),
-                None => Err(super::ParseError::from_other("Unexpected EOS"))
+                Some(tok) => Err(ParseError::from_token(tok.clone(), msg)),
+                None => Err(ParseError::from_other("Unexpected EOS"))
             }
         }
     }
 
-    fn consume_if(&mut self, cond: impl Fn(TokenType) -> bool, msg: &'static str) -> Result<Token, super::ParseError> {
+    fn consume_if(&mut self, cond: impl Fn(TokenType) -> bool, msg: &'static str) -> Result<Token, ParseError> {
         match self.peek() {
-            Some(tok) if cond(tok.ty()) => self.advance().ok_or_else(|| super::ParseError::from_other("Unexpected EOS")),
-            Some(tok) =>  Err(super::ParseError::from_token(tok.clone(), msg)),
-            None => Err(super::ParseError::from_other("Unexpected EOS")),
+            Some(tok) if cond(tok.ty()) => self.advance().ok_or_else(|| ParseError::from_other("Unexpected EOS")),
+            Some(tok) =>  Err(ParseError::from_token(tok.clone(), msg)),
+            None => Err(ParseError::from_other("Unexpected EOS")),
         }
     }
 
@@ -126,7 +126,7 @@ impl<'a> BasicParser<'a> {
         }
     }
 
-    fn declaration(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
+    fn declaration(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         debug!("read declaration");
         let stmt = if let Some(_var_tok) = self.match_token([TokenType::Let]) {
             self.var_declaration()
@@ -145,7 +145,7 @@ impl<'a> BasicParser<'a> {
         }
     }
 
-    fn var_declaration(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
+    fn var_declaration(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         debug!("read var declaration");
         let name = self.consume_if(|ty| ty.is_ident(), "Expected variable name")?;
 
@@ -160,7 +160,7 @@ impl<'a> BasicParser<'a> {
             init = Some(self.expression()?);
         }
         if init.is_none() || ty.is_none() {
-            return Err(super::ParseError::from_other("Expected expression and variable type"));
+            return Err(ParseError::from_other("Expected expression and variable type"));
         }
 
         let ident = Symbol::new(name)?;
@@ -168,7 +168,7 @@ impl<'a> BasicParser<'a> {
 
         let ty_info = match self.symbol_tbl.borrow().get_symbol_data(&ty_ident, self.symbol_tbl.borrow().scope_depth()) {
             Some(SymbolData::Type { ty }) => ty,
-            Some(_) => return Err(super::ParseError::from_other("ident is being used by something else")),
+            Some(_) => return Err(ParseError::from_other("ident is being used by something else")),
             // assume forward declaration here. if the type continues to not be defined via ID, we will error on compilation.
             None => TypeInformation::NonLiteral(ty_ident.clone()),
         };
@@ -197,7 +197,7 @@ impl<'a> BasicParser<'a> {
         Ok(Statement::VarStatement { ident, init: init.expect("big issue; init existed prev but now now"), information: ParseInfo::new(scope_depth, self.symbol_tbl.clone()) })
     }
 
-    fn statement(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
+    fn statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         debug!("read statement");
         if let Some(_print_tok) = self.match_token([TokenType::Identifier(String::from("print"))]) {
             self.print_statement()
@@ -205,14 +205,14 @@ impl<'a> BasicParser<'a> {
             // block
             self.begin_scope();
             let bs = self.block_statement();
-            self.end_scope();
+            self.end_scope()?;
             bs
         } else {
             self.expression_statement()
         }
     }
 
-    fn block_statement(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
+    fn block_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         debug!("read block");
         let mut decls = Vec::new();
         while self.match_token([TokenType::RightBrace, TokenType::Eof]).is_none() {
@@ -223,26 +223,26 @@ impl<'a> BasicParser<'a> {
         Ok(Statement::BlockStatement { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
     }
 
-    fn print_statement(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
+    fn print_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         debug!("read print statement");
         let expression = self.expression()?;
         self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
         Ok(Statement::PrintStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
     }
 
-    fn expression_statement(&mut self) -> Result<Statement<ParseInfo>, super::ParseError> {
+    fn expression_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         debug!("read expression statement");
         let expression = self.expression()?;
         self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
         Ok(Statement::ExpressionStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
     }
 
-    fn expression(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
+    fn expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         debug!("read expression");
         self.assignment() 
     }
 
-    fn assignment(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
+    fn assignment(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         debug!("read assignment");
         let lhs = self.equality()?;
 
@@ -255,17 +255,17 @@ impl<'a> BasicParser<'a> {
                     if let TokenType::Identifier(s) = literal.ty() {
                         Ok(Expression::Assignment { name: Symbol::from(s), value: Box::new(rhs), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
                     } else {
-                        Err(super::ParseError::from_token(eq, "Invalid assignment target"))
+                        Err(ParseError::from_token(eq, "Invalid assignment target"))
                     }
                 },
-                _ => Err(super::ParseError::from_token(eq, "Invalid assignment target")),
+                _ => Err(ParseError::from_token(eq, "Invalid assignment target")),
             }
         }
 
         Ok(lhs)
     }
 
-    fn equality(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
+    fn equality(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         debug!("read equality");
         let mut lhs = self.comparison()?;
 
@@ -282,7 +282,7 @@ impl<'a> BasicParser<'a> {
         Ok(lhs)
     }
 
-    fn comparison(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
+    fn comparison(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         debug!("read comparison");
         let mut lhs = self.term()?;
 
@@ -299,7 +299,7 @@ impl<'a> BasicParser<'a> {
         Ok(lhs)
     }
 
-    fn term(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
+    fn term(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         debug!("read term");
         let mut lhs = self.factor()?;
 
@@ -316,7 +316,7 @@ impl<'a> BasicParser<'a> {
         Ok(lhs)
     }
 
-    fn factor(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
+    fn factor(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         debug!("read factor");
         let mut lhs = self.unary()?;
 
@@ -333,7 +333,7 @@ impl<'a> BasicParser<'a> {
         Ok(lhs)
     }
 
-    fn unary(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
+    fn unary(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         debug!("read unary");
         if let Some(oper) = self.match_token([TokenType::Bang, TokenType::Minus]) {
             self.unary().map(|rhs| Expression::Unary {
@@ -346,7 +346,7 @@ impl<'a> BasicParser<'a> {
         }
     }
 
-    fn primary(&mut self) -> Result<Expression<ParseInfo>, super::ParseError> {
+    fn primary(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         debug!("read primary");
         if self.match_token([TokenType::LeftParen]).is_some() {
             debug!("read seq");
@@ -372,15 +372,15 @@ impl<'a> BasicParser<'a> {
                 .advance()
                 .filter(|tk| tk.ty().is_literal())
                 .map(|tk| Expression::Literal { literal: tk, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
-                .ok_or_else(|| super::ParseError::from_other("Unexpected EOS"))
+                .ok_or_else(|| ParseError::from_other("Unexpected EOS"))
         }
     }
 }
 
 impl<'a> Parser for BasicParser<'a> {
-    type Out = Result<(AbstractTree<ParseInfo>, ExtSymbolTable), super::ParseError>;
+    type Out = Result<(AbstractTree<ParseInfo>, ExtSymbolTable), ParseError>;
 
-    fn parse(mut self) -> Result<(AbstractTree<ParseInfo>, ExtSymbolTable), super::ParseError> {
+    fn parse(mut self) -> Result<(AbstractTree<ParseInfo>, ExtSymbolTable), ParseError> {
         self.declaration().map(|stmt| (AbstractTree::statement(stmt, ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone())), self.root_symbol_tbl))
     }
 }

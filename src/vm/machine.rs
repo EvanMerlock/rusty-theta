@@ -6,6 +6,8 @@ use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MAR
 
 use super::call_frame::ThetaStack;
 
+// TODO: can we snapshot the VM using CoW?
+// probably not, but what happens if an instruction fails due to bad input data?
 pub struct VM {
     stack: ThetaStack,
     constants: Vec<ThetaValue>,
@@ -139,7 +141,7 @@ impl Disassembler for VM {
                     offset += len;
                     self.constants.push(tv);
                 }
-                _ => panic!("invalid marker found in chunk"),
+                _ => return Err(DisassembleError::InvalidMarkerInChunk(marker.to_vec())),
             }
         }
 
