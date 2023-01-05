@@ -1,14 +1,15 @@
-use std::{rc::Rc, collections::HashMap};
+use std::{rc::Rc, collections::{HashMap, HashSet}};
 
 use log::debug;
 
-use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER};
+use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER, ThetaString};
 
 use super::call_frame::ThetaStack;
 
 pub struct VM {
     stack: ThetaStack,
     constants: Vec<ThetaValue>,
+    strings: HashMap<ThetaString, Rc<ThetaHeapValue>>,
     heap: Vec<Rc<ThetaHeapValue>>,
 }
 
@@ -16,9 +17,14 @@ impl VM {
     pub fn new() -> VM {
         VM {
             stack: ThetaStack::new(),
+            strings: HashMap::new(),
             constants: Vec::new(),
             heap: Vec::new(),
         }
+    }
+
+    pub fn strings(&self) -> &HashMap<ThetaString, Rc<ThetaHeapValue>> {
+        &self.strings
     }
 
     pub fn stack(&self) -> &ThetaStack {
@@ -39,6 +45,19 @@ impl VM {
 
     pub fn clear_const_pool(&mut self) {
         self.constants.clear()
+    }
+
+    pub fn intern_string(&mut self, s_val: ThetaString) -> ThetaValue {
+        let hv = match self.strings.get(&s_val) {
+            Some(rc) => rc.clone(),
+            None => { 
+                let rc = Rc::new(ThetaHeapValue::Str(s_val.clone()));
+                self.strings.insert(s_val, rc.clone());
+                self.heap.push(rc.clone());
+                rc
+            },
+        };
+        ThetaValue::HeapValue(hv)
     }
 }
 
@@ -114,10 +133,11 @@ impl Disassembler for VM {
                     bytes.extend_from_slice(in_str);
                     let read_str = String::from_utf8(bytes)?;
                     debug!("str found in constant pool: {}", read_str);
-                    let hv = Rc::new(ThetaHeapValue::Str(read_str));
+                    debug!("checking for memoized string");
+                    let s_val = ThetaString::new(read_str);
+                    let tv = self.intern_string(s_val);
                     offset += len;
-                    self.heap.push(hv.clone());
-                    self.constants.push(ThetaValue::HeapValue(hv));
+                    self.constants.push(tv);
                 }
                 _ => panic!("invalid marker found in chunk"),
             }
@@ -160,11 +180,9 @@ impl Disassembler for VM {
                         (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
                             match (&*l, &*r) {
                                 (&ThetaHeapValue::Str(ref ls), &ThetaHeapValue::Str(ref rs)) => {
-                                    let new = ls.clone() + rs;
-                                    let thv = Rc::new(ThetaHeapValue::Str(new));
-                                    let stack_val = ThetaValue::HeapValue(thv.clone());
-                                    self.heap.push(thv);
-                                    self.stack.push(stack_val);
+                                    let s_val = ls.clone() + rs;
+                                    let tv = self.intern_string(s_val);                              
+                                    self.stack.push(tv);
                                 },
                             }
                         }
@@ -295,7 +313,7 @@ impl Disassembler for VM {
                         ThetaValue::HeapValue(hv) => {
                             match &*hv {
                                 ThetaHeapValue::Str(s) => {
-                                    let v = self.stack.globals_mut().get(s);
+                                    let v = self.stack.globals_mut().get(s.internal().as_str());
                                     let v2 = v.expect("no such constant").clone();
                                     self.stack.push(v2);
                                 },

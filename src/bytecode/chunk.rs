@@ -1,11 +1,11 @@
-use super::{OpCode, ThetaValue};
+use super::{OpCode, ThetaValue, ThetaConstant};
 
 pub const CHUNK_HEADER: [u8; 8] = [84, 104, 101, 67, 104, 117, 110, 107];
 
 #[derive(Debug)]
 pub struct Chunk {
     instructions: Vec<OpCode>,
-    constants: Vec<ThetaValue>,
+    constants: Vec<ThetaConstant>,
 }
 
 impl Chunk {
@@ -21,11 +21,11 @@ impl Chunk {
         &self.instructions
     }
 
-    pub fn write_constant(&mut self, constant: ThetaValue) {
+    pub fn write_constant(&mut self, constant: ThetaConstant) {
         self.constants.push(constant);
     }
 
-    pub fn constants(&self) -> &Vec<ThetaValue> {
+    pub fn constants(&self) -> &Vec<ThetaConstant> {
         &self.constants
     }
 

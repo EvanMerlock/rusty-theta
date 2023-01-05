@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::ast::symbol::SymbolData;
 use crate::ast::{Expression, Statement, AbstractTree, InnerAbstractTree};
-use crate::bytecode::{Chunk, OpCode, ThetaValue, ThetaHeapValue};
+use crate::bytecode::{Chunk, OpCode, ThetaValue, ThetaHeapValue, ThetaConstant};
 use crate::parser::Identifier;
 use crate::{build_chunk, lexer::token};
 
@@ -74,24 +74,24 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
             }
             Expression::Literal { literal, information: info } => match literal.ty() {
                 token::TokenType::Integer(i) => {
-                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaValue::Int(i as i64))
+                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaConstant::Int(i as i64))
                 }
                 token::TokenType::Float(f) => {
-                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaValue::Double(f as f64))
+                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaConstant::Double(f as f64))
                 }
                 token::TokenType::True => {
-                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaValue::Bool(true))
+                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaConstant::Bool(true))
                 }
                 token::TokenType::False => {
-                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaValue::Bool(false))
+                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaConstant::Bool(false))
                 }
                 token::TokenType::Str(s) => {
-                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaValue::HeapValue(Rc::new(ThetaHeapValue::Str(s))))
+                    build_chunk!(OpCode::Constant { offset: 0 }; ThetaConstant::Str(s))
                 },
                 token::TokenType::Identifier(id) => {
                     match info.pi.scope_depth {
                         0 => {
-                            build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaValue::HeapValue(Rc::new(ThetaHeapValue::Str(id))))
+                            build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaConstant::Str(id))
                         },
                         sd => {
                             let local = info.pi.current_symbol_table.borrow().get_symbol_data(&Identifier::from(id), sd).expect("local not found");
@@ -120,9 +120,9 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     .expect("expression vec was empty in seq")
             }
             Expression::Assignment { name, value, information: _ } => {
-                let st = Rc::new(ThetaHeapValue::Str(name.id().clone()));
+                let st = ThetaConstant::Str(name.id().clone());
                 let set_chunk = self.visit_expression(value)?;
-                let glob_chunk = build_chunk!(OpCode::DefineGlobal { offset: 0 }; ThetaValue::HeapValue(st));
+                let glob_chunk = build_chunk!(OpCode::DefineGlobal { offset: 0 }; st);
                 set_chunk.merge_chunk(glob_chunk)
             },
         })
@@ -149,9 +149,9 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 match info.pi.scope_depth {
                     0 => {
                         // emit global when sd == 0
-                        let hv = Rc::new(ThetaHeapValue::Str(ident.id().to_owned()));
+                        let hv = ThetaConstant::Str(ident.id().to_owned());
                         let init_chunk = self.visit_expression(init)?;
-                        let glob_chunk = build_chunk!(OpCode::DefineGlobal { offset: 0 }; ThetaValue::HeapValue(hv));
+                        let glob_chunk = build_chunk!(OpCode::DefineGlobal { offset: 0 }; hv);
                         Ok(init_chunk.merge_chunk(glob_chunk))
                     },
                     sd => {

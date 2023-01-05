@@ -46,6 +46,9 @@ impl Repl {
                         },
                         "--symbols" => {
                             debug!("Symbol Table: {:#?}", self.tbl);
+                        },
+                        "--strings" => {
+                            debug!("Interned Strings: {:#?}", self.machine.strings());
                         }
                         "--quit" | "--exit" => {
                             return Ok(ReplStatus::ReplTerminate);
