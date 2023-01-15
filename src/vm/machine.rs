@@ -8,6 +8,8 @@ use super::call_frame::ThetaStack;
 
 // TODO: can we snapshot the VM using CoW?
 // probably not, but what happens if an instruction fails due to bad input data?
+// TODO: separate disassembler from execution. disassembly only needs to happen once per input
+// and thus will take less time than execution except on REPL.
 pub struct VM {
     stack: ThetaStack,
     constants: Vec<ThetaValue>,

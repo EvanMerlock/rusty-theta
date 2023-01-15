@@ -10,6 +10,8 @@ use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
 use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk};
 use crate::{vm::VM, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}};
 
+// TODO: move REPL to using a direct to instruction assembler. Then we don't need the disassembly step.
+// chunk building should only occur when a stream of bytecode is known.
 pub struct Repl {
     machine: VM,
     tbl: ExtSymbolTable,
