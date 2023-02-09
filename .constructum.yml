@@ -1,0 +1,12 @@
+version: 1
+steps:
+  - name: "build"
+    image: "rust:latest"
+    pull: "Always"
+    commands:
+      - "cargo build"
+  - name: "test"
+    image: "rust:latest"
+    pull: "Always"
+    commands:
+      - "cargo test"
