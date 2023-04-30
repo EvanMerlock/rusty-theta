@@ -24,7 +24,7 @@ steps:
 secrets:
   - name: test_1
     location: "test"
-    key: test_1
+    key: secret1
   - name: test_2
     location: "test"
-    key: test_2
+    key: secret2
