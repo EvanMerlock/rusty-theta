@@ -11,6 +11,7 @@ steps:
     commands:
       - "echo $TEST_1"
       - "echo $TEST_2"
+      - "pause"
     secrets:
       - name: test_1
         var_name: TEST_1
