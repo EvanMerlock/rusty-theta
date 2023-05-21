@@ -5,27 +5,8 @@ steps:
     pull: "Always"
     commands:
       - "cargo build"
-  - name: "test secrets"
-    image: "ubuntu:23.04"
-    pull: "Always"
-    commands:
-      - "echo $TEST_1"
-      - "echo $TEST_2"
-      - "sleep infinity"
-    secrets:
-      - name: test_1
-        var_name: TEST_1
-      - name: test_2
-        var_name: TEST_2
   - name: "test"
     image: "rust:latest"
     pull: "Always"
     commands:
       - "cargo test"
-secrets:
-  - name: test_1
-    location: "test"
-    key: secret1
-  - name: test_2
-    location: "test"
-    key: secret2
