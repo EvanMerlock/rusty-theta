@@ -380,8 +380,6 @@ impl<'a> BasicParser<'a> {
 impl<'a> Parser for BasicParser<'a> {
     type Out = Result<Vec<(AbstractTree<ParseInfo>, ExtSymbolTable)>, ParseError>;
 
-    // TODO: this should parse a full file with multiple top-level statements.
-    // this means we need to drive it more than just once.
     fn parse(mut self) -> Result<Vec<(AbstractTree<ParseInfo>, ExtSymbolTable)>, ParseError> {
         let mut trees = Vec::new();
 
