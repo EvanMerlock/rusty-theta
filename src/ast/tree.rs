@@ -1,12 +1,12 @@
 use crate::{lexer::token::Token, bytecode::Symbol};
 use std::fmt::Debug;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct AbstractTree<T> where T: Debug + PartialEq {
     inner: InnerAbstractTree<T>
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum InnerAbstractTree<T> where T: Debug + PartialEq {
     Expression((Expression<T>, T)),
     Statement((Statement<T>, T)),
@@ -37,7 +37,7 @@ impl<T> AbstractTree<T> where T: Debug + PartialEq {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression<T> where T: Debug + PartialEq {
     Binary {
         left: Box<Expression<T>>,
@@ -88,7 +88,7 @@ impl<T: Debug + PartialEq> Expression<T> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement<T> where T: Debug + PartialEq {
     ExpressionStatement {
         expression: Expression<T>,

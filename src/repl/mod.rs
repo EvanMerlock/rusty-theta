@@ -65,10 +65,11 @@ impl Repl {
                 let tokens = lexer.lex()?;
                 let mut token_stream = tokens.into_iter();
                 let parser = BasicParser::new_sym(&mut token_stream, self.tbl.clone());
-                let (ast, sym) = parser.parse()?;
+                let trees = parser.parse()?;
+                let (ast, sym) = &trees[0];
                 debug!("sym: {:?}", sym.borrow());
                 let type_cker = TypeCk::new(sym.clone());
-                self.tbl = sym;
+                self.tbl = sym.clone();
                 let type_check = type_cker.transform(&ast)?;
                 let chunk = ToByteCode.transform(&type_check)?;
                 let chunks: Vec<Chunk> = vec![chunk];

@@ -14,7 +14,9 @@ macro_rules! define_parse_test {
                 let actual_out = parser.parse();
     
                 assert_eq!(actual_out.is_ok(), true);
-                assert_eq!(actual_out.expect("failed to unwrap in test").0.strip_information(), $output);
+                let trees = actual_out.expect("failed to unwrap in test");
+                let (tree, _sym) = &trees[0];
+                assert_eq!(tree.clone().strip_information(), $output);
             }
         }
     };

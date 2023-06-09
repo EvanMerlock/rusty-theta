@@ -378,10 +378,23 @@ impl<'a> BasicParser<'a> {
 }
 
 impl<'a> Parser for BasicParser<'a> {
-    type Out = Result<(AbstractTree<ParseInfo>, ExtSymbolTable), ParseError>;
+    type Out = Result<Vec<(AbstractTree<ParseInfo>, ExtSymbolTable)>, ParseError>;
 
     // TODO: this should parse a full file with multiple top-level statements.
-    fn parse(mut self) -> Result<(AbstractTree<ParseInfo>, ExtSymbolTable), ParseError> {
-        self.declaration().map(|stmt| (AbstractTree::statement(stmt, ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone())), self.root_symbol_tbl))
+    // this means we need to drive it more than just once.
+    fn parse(mut self) -> Result<Vec<(AbstractTree<ParseInfo>, ExtSymbolTable)>, ParseError> {
+        let mut trees = Vec::new();
+
+        while !self.is_at_end() {
+            let pot_tree = self
+                .declaration()
+                .map(|stmt| 
+                    (AbstractTree::statement(stmt, ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone())), self.root_symbol_tbl.clone())
+                )?;
+
+            trees.push(pot_tree);
+        }
+
+        Ok(trees)
     }
 }
