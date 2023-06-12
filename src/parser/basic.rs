@@ -239,7 +239,37 @@ impl<'a> BasicParser<'a> {
 
     fn expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         debug!("read expression");
-        self.assignment() 
+
+        if let Some(_if_tok) = self.match_token([TokenType::If]) {
+            self.if_expression()
+        } else {
+            self.assignment() 
+        }
+    }
+
+    fn if_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
+        debug!("if expression");
+
+        // consume the if expression
+        self.consume(TokenType::LeftParen, "Expected '(' after if keyword")?;
+        let check_expr = self.expression()?;
+        self.consume(TokenType::RightParen, "Expected ')' after if keyword")?;
+
+        // grab the expression which should exist after the if block
+        // TODO: enforce braces around if blocks
+
+        let body_expr = self.expression()?;
+
+        // check for else / else if
+
+        let else_clause = if let Some(_else_tok) = self.match_token([TokenType::Else]) {
+            Some(Box::new(self.expression()?))
+        } else {
+            None
+        };
+
+        Ok(Expression::If { check_expression: Box::new(check_expr), body: Box::new(body_expr), else_body: else_clause, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
+
     }
 
     fn assignment(&mut self) -> Result<Expression<ParseInfo>, ParseError> {

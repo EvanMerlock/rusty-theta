@@ -84,6 +84,29 @@ impl<'a> Assembler for BasicAssembler<'a> {
                         self.output_file.write(&[0xC3u8, *offset as u8])?
                     }
 
+                    OpCode::JumpLocal { offset } => {
+                        self.output_file.write(&[0xD0u8, *offset as u8])?
+                    },
+
+                    OpCode::JumpLocalIfFalse { offset } => {
+                        self.output_file.write(&[0xD1u8, *offset as u8])?
+                    }
+
+                    OpCode::JumpFar { offset } => {
+                        let off_bytes = offset.to_le_bytes();
+
+
+                        self.output_file.write(&[0xD2u8])?;
+                        self.output_file.write(&off_bytes)?
+                    },
+
+                    OpCode::JumpFarIfFalse { offset } => {
+                        let off_bytes = offset.to_le_bytes();
+
+                        self.output_file.write(&[0xD3u8])?;
+                        self.output_file.write(&off_bytes)?
+                    }
+
                     OpCode::DebugPrint => self.output_file.write(&[0xFFu8])?,
                 };
             }

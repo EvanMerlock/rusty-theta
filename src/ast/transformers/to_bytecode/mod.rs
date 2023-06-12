@@ -121,6 +121,70 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 let glob_chunk = build_chunk!(OpCode::DefineGlobal { offset: 0 }; st);
                 set_chunk.merge_chunk(glob_chunk)
             },
+            Expression::If { check_expression, body, else_body, information: _ } => {
+                let check_block = self.visit_expression(check_expression)?;
+                let body_block = self.visit_expression(body)?;
+                let else_block = if let Some(else_clause) = else_body {
+                    Some(self.visit_expression(else_clause)?)
+                } else {
+                    None
+                };
+
+                // we now need to compute how far the if needs to jump.
+                // there are multiple types of jump and we use the one that is most relevant.
+                // if the jump size is less than 127, we can use a local jump.
+                // if the jump size is greater than 127, we will instead switch to a full-sized jump.
+                // note that we can only jump at most by sizeof(isize) - 1 because we need the sign bit
+                // for when a jump is negative.
+
+                // first we need to know how big the main body is.
+                // TODO: if this overflows code you can execute code at a different location
+                let jump_size = body_block.instruction_size() as isize;
+                let jump_size: isize = jump_size + match &else_block {
+                    Some(block) => block.instruction_size() as isize + 1, // past the jump at the end of the main body
+                    None => 0
+                };
+
+                let jump_chunk = if jump_size > 127 {
+                    // emit non-"local" jump
+                    build_chunk!(OpCode::JumpFarIfFalse { offset: jump_size }, OpCode::Pop)
+                } else {
+                    build_chunk!(OpCode::JumpLocalIfFalse { offset: jump_size as i8 }, OpCode::Pop)
+                };
+
+                // first we emit the check block, which should leave a boolean on top of the stack
+                // then we emit the jump chunk
+
+                let combined_block = check_block.merge_chunk(jump_chunk); 
+
+                // then we emit the body chunk
+
+                let combined_block = combined_block.merge_chunk(body_block);
+
+                // then we emit a jump chunk that skips to the end of the else block if it exists
+                // then we emit the else block if it exists
+
+                let combined_block = if let Some(block) = else_block {
+
+
+                    let jump_size: isize = block.instruction_size() as isize;
+
+                    let jump_chunk = if jump_size > 127 {
+                        // emit non-"local" jump
+                        build_chunk!(OpCode::JumpFarIfFalse { offset: jump_size }, OpCode::Pop)
+                    } else {
+                        build_chunk!(OpCode::JumpLocalIfFalse { offset: jump_size as i8 }, OpCode::Pop)
+                    };
+
+                    let combined_block = combined_block.merge_chunk(jump_chunk);
+                    combined_block.merge_chunk(block)
+                } else {
+                    combined_block
+                };
+
+                combined_block
+
+            },
         })
     }
 

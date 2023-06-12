@@ -95,6 +95,10 @@ impl Disassembler for StringDisassembler {
                 0xB => { readout.push_str("Op: LT (0xB)\r\n"); offset += 1 },
                 0xC0 => { readout.push_str(&format!("Op: Def Global (0x1) with offset: {}\r\n", &chunk[offset+1])); offset += 2 },
                 0xC1 => { readout.push_str(&format!("Op: Get Global (0x1) with offset: {}\r\n", &chunk[offset+1])); offset += 2 },
+                0xD0 => { readout.push_str(&format!("Op: Jump Unconditional (0xD0) with offset: {}\r\n", &chunk[offset+1])); offset += 2 },
+                0xD1 => { readout.push_str(&format!("Op: Jump If False (0xD1) with offset: {}\r\n", &chunk[offset+1])); offset += 2 },
+                0xD2 => { readout.push_str(&format!("Op: Jump Unconditional Far (0xD2) with offset: {:?}\r\n", &chunk[offset+1..offset+1+std::mem::size_of::<isize>()])); offset += 1 + std::mem::size_of::<isize>() },
+                0xD3 => { readout.push_str(&format!("Op: Jump Far If False (0xD3) with offset: {:?}\r\n", &chunk[offset+1..offset+1+std::mem::size_of::<isize>()])); offset += 1 + std::mem::size_of::<isize>() },
                 0xFF => { readout.push_str("Op: Print (0xFF)\r\n"); offset += 1 },
                 code => { readout.push_str(&format!("Op: Unknown ({:#x})\r\n", code)); offset += 1 }
             }

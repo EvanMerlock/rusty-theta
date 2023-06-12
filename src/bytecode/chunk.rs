@@ -13,6 +13,17 @@ impl Chunk {
         Chunk { instructions: Vec::new(), constants: Vec::new() }
     }
 
+    /// Derives the size of the individual instructions inside the chunk.
+    /// This can be used, for example, to derive jump information for if-statements and loops.
+    /// We do not necessarily need constant pool or chunk header sizes included in the instruction size.
+    pub fn instruction_size(&self) -> usize {
+        let mut size: usize = 0;
+        for instruction in &self.instructions {
+            size += instruction.size();
+        } 
+        size
+    }
+
     pub fn write_to_chunk(&mut self, instruction: OpCode) {
         self.instructions.push(instruction);
     }

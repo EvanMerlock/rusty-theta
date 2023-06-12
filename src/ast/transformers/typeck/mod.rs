@@ -24,6 +24,8 @@ pub enum TypeCkError {
     InvalidLiteralInPosition(Token),
     IncorrectInitializer(Symbol),
     InvalidAssignment(TypeInformation, TypeInformation),
+    InvalidIfExpressionCheck(TypeInformation),
+    InvalidIfBranches(TypeInformation, TypeInformation),
 }
 
 impl Error for TypeCkError {
@@ -46,6 +48,8 @@ impl Display for TypeCkError {
             TypeCkError::IncorrectInitializer(ident) => write!(f, "Incorrect initializer for identifier: {}", ident),
             TypeCkError::InvalidAssignment(lhs, rhs) => write!(f, "Invalid assignment; LHS = {}, RHS = {} and there is no type-unity", lhs, rhs),
             TypeCkError::InvalidLiteralInPosition(tk) => write!(f, "!! A non-literal token was found where a literal was expected: {} !!", tk),
+            TypeCkError::InvalidIfExpressionCheck(ty) => write!(f, "Type Mismatch! Expected boolean, instead an if expression produced: {}", ty),
+            TypeCkError::InvalidIfBranches(ty_l, ty_r) => write!(f, "Type Mismatch! Primary If Body: {}, Else Body: {}", ty_l, ty_r),
         }
     }
 }
@@ -240,6 +244,28 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                     Ok(Expression::Assignment { name: name.clone(), value: Box::new(rhs_ty), information: TypeCkOutput { ty: lhs_ty, pi: info.clone() } })
                 }
 
+            },
+            Expression::If { check_expression, body, else_body, information } => {
+                let check_ty = self.visit_expression(check_expression)?;
+                if check_ty.information().ty != TypeInformation::Boolean {
+                    return Err(TransformError::from(TypeCkError::InvalidIfExpressionCheck(check_ty.information().ty.clone())))
+                }
+
+                let else_body_type = if let Some(exists_else_body) = else_body {
+                    Some(Box::new(self.visit_expression(exists_else_body)?))
+                } else {
+                    None
+                };
+
+                let primary_body_type = self.visit_expression(body)?;
+
+                if let Some(else_body_info) = else_body_type.clone() {
+                    if primary_body_type.information().ty != else_body_info.information().ty {
+                        return Err(TransformError::TypeCkError(TypeCkError::InvalidIfBranches(else_body_info.information().ty.clone(), primary_body_type.information().ty.clone())));
+                    }
+                };
+
+                Ok(Expression::If { check_expression: Box::new(check_ty), body: Box::new(primary_body_type.clone()), else_body: else_body_type, information: TypeCkOutput { ty: primary_body_type.information().ty.clone(), pi: information.clone() } })
             },
         }
     }

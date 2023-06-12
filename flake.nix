@@ -19,7 +19,7 @@
             inherit system overlays;
           };
           rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-          nativeBuildInputs = with pkgs; [ rustToolchain pkg-config ];
+          nativeBuildInputs = with pkgs; [ rustToolchain rust-analyzer-unwrapped pkg-config ];
           buildInputs = with pkgs; [ ];
         in
         with pkgs;
@@ -28,6 +28,7 @@
             inherit buildInputs nativeBuildInputs;
 
             packages = [ ];
+            RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
           };
         }
       );

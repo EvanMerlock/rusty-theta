@@ -51,6 +51,13 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
                     OpCode::DefineLocal { offset } => writeln!(self.output_file, "Op: Define Local with offset {:?} (0xC2)", offset)?,
                     OpCode::GetLocal { offset } => writeln!(self.output_file, "Op: Get Local wih offset {:?} (0xC3)", offset)?,
 
+                    OpCode::JumpLocal { offset } => writeln!(self.output_file, "Op: Jump Unconditional with offset {:?} (0xD0)", offset)?,
+                    OpCode::JumpLocalIfFalse { offset } => writeln!(self.output_file, "Op: Jump If False with offset {:?} (OxD1)", offset)?,
+
+                    OpCode::JumpFar { offset } => writeln!(self.output_file, "Op: Jump Unconditional Far with offset {:?} (0xD2)", offset)?,
+                    OpCode::JumpFarIfFalse { offset } => writeln!(self.output_file, "Op: Jump Far If False with offset {:?} (OxD3)", offset)?,
+
+
                     OpCode::DebugPrint => writeln!(self.output_file, "Op: DebugPrint (0xFF)")?,
                 };
             }

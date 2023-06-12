@@ -63,6 +63,12 @@ pub enum Expression<T> where T: Debug + PartialEq {
         name: Symbol,
         value: Box<Expression<T>>,
         information: T
+    },
+    If {
+        check_expression: Box<Expression<T>>,
+        body: Box<Expression<T>>,
+        else_body: Option<Box<Expression<T>>>,
+        information: T,
     }
 }
 
@@ -74,6 +80,7 @@ impl<T: Debug + PartialEq> Expression<T> {
             Expression::Literal { literal: _, information } => information,
             Expression::Sequence { seq: _, information } => information,
             Expression::Assignment { name: _, value: _, information } => information,
+            Expression::If { check_expression: _, body: _, else_body: _, information } => information,
         }
     }
 
@@ -84,6 +91,7 @@ impl<T: Debug + PartialEq> Expression<T> {
             Expression::Literal { literal, information: _ } => Expression::Literal { literal, information: () },
             Expression::Sequence { seq, information: _ } => Expression::Sequence { seq: seq.into_iter().map(|x| x.strip_information()).collect(), information: () },
             Expression::Assignment { name, value, information: _ } => Expression::Assignment { name, value: Box::new(value.strip_information()), information: () },
+            Expression::If { check_expression, body, else_body, information: _ } => Expression::If { check_expression: Box::new(check_expression.strip_information()), body: Box::new(body.strip_information()), else_body: else_body.map(|stmt| Box::new(stmt.strip_information())), information: () },
         }
     }
 }

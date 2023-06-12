@@ -1,6 +1,6 @@
 use std::{rc::Rc, collections::HashMap};
 
-use log::debug;
+use log::{debug, error};
 
 use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER, ThetaString};
 
@@ -75,7 +75,7 @@ impl Disassembler for VM {
     type Out = Result<(), DisassembleError>;
 
     fn disassemble_chunk(&mut self, chunk: &[u8]) -> Result<(), DisassembleError> {
-        let mut offset = 18;
+        let mut offset: usize = 18;
 
         debug!("chunk: {:?}", chunk);
 
@@ -340,6 +340,71 @@ impl Disassembler for VM {
                     let li = chunk[offset+1] as usize;
                     self.stack.push(self.stack.get_local(li).expect("local does not exist when it should").clone());
                     offset += 2
+                },
+                0xD0 => {
+                    debug!("Op: Jump Unconditional (0xD0) with offset: {}", chunk[offset+1] as usize);
+                    let local_jump_point = chunk[offset+1] as i8;
+                    let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point as isize);
+                    if overflow {
+                        panic!()
+                    }
+                    offset = new_off;
+                },
+                0xD1 => {
+                    debug!("Op: Jump If False Local (0xD1) with offset: {}", chunk[offset+1] as usize);
+                    let local_jump_point = chunk[offset+1] as i8;
+
+                    // this op should not pop off the stack, we should instead emit an instruction to do that.
+                    match self.stack.peek() {
+                        Some(ThetaValue::Bool(false)) => {
+                            debug!("jumping because top of stack is false");
+                            let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point as isize);
+                            if overflow {
+                                panic!()
+                            }
+                            offset = new_off;
+                        },
+                        Some(ThetaValue::Bool(_)) => {
+                            debug!("not jumping, top of stack is not false");
+                            offset += 2;
+                        },
+                        _ => {
+                            error!("top of stack non-existent on JMPIFF instruction");
+                            panic!()
+                        }
+                    }
+                },
+                0xD2 => {
+                    debug!("Op: Jump Unconditional Far (0xD2) with offset: {}", chunk[offset+1] as usize);
+                    let local_jump_point = isize::from_le_bytes(chunk[offset+1..offset+9].try_into().expect("8 ele slice not converted"));
+                    let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point as isize);
+                    if overflow {
+                        panic!()
+                    }
+                    offset = new_off;                
+                },
+                0xD3 => {
+                    debug!("Op: Jump If False Far (0xD3) with offset: {}", chunk[offset+1] as usize);
+                    let local_jump_point = isize::from_le_bytes(chunk[offset+1..offset+9].try_into().expect("8 ele slice not converted"));
+
+                    // this op should not pop off the stack, we should instead emit an instruction to do that.
+                    match self.stack.peek() {
+                        Some(ThetaValue::Bool(false)) => {
+                            debug!("jumping because top of stack is false");
+                            let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point as isize);
+                            if overflow {
+                                panic!()
+                            }
+                            offset = new_off;                        },
+                        Some(ThetaValue::Bool(_)) => {
+                            debug!("not jumping, top of stack is not false");
+                            offset += 2;
+                        },
+                        _ => {
+                            error!("top of stack non-existent on JMPIFF instruction");
+                            panic!()
+                        }
+                    }
                 },
                 0xFF => { 
                     debug!("Op: Print (0xFF)"); 
