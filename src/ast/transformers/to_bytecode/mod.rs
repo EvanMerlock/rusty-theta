@@ -134,22 +134,26 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 // there are multiple types of jump and we use the one that is most relevant.
                 // if the jump size is less than 127, we can use a local jump.
                 // if the jump size is greater than 127, we will instead switch to a full-sized jump.
-                // note that we can only jump at most by sizeof(isize) - 1 because we need the sign bit
+                // note that we can only jump at most by 2^(sizeof(isize) - 1) because we need the sign bit
                 // for when a jump is negative.
 
                 // first we need to know how big the main body is.
                 // TODO: if this overflows code you can execute code at a different location
                 let jump_size = body_block.instruction_size() as isize;
                 let jump_size: isize = jump_size + match &else_block {
-                    Some(block) => block.instruction_size() as isize + 1, // past the jump at the end of the main body
+                    Some(block) => block.instruction_size() as isize,
                     None => 0
                 };
 
-                let jump_chunk = if jump_size > 127 {
+                // depending on which jump is emitted we need to add the size of the jump to the offset!!!
+                // we also need to consider if we're jumping from the START of the jump instruction (we are) vs. the end of the jump instruction
+
+                let jump_chunk = if jump_size + 2 > 127 {
                     // emit non-"local" jump
-                    build_chunk!(OpCode::JumpFarIfFalse { offset: jump_size }, OpCode::Pop)
+                    // TODO: clean this up
+                    build_chunk!(OpCode::JumpFarIfFalse { offset: jump_size + 2 + (std::mem::size_of::<isize>() as isize) }, OpCode::Pop)
                 } else {
-                    build_chunk!(OpCode::JumpLocalIfFalse { offset: jump_size as i8 }, OpCode::Pop)
+                    build_chunk!(OpCode::JumpLocalIfFalse { offset: (jump_size + 3) as i8 }, OpCode::Pop)
                 };
 
                 // first we emit the check block, which should leave a boolean on top of the stack
@@ -164,22 +168,35 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 // then we emit a jump chunk that skips to the end of the else block if it exists
                 // then we emit the else block if it exists
 
+                // TODO: we are missing a POP somewhere in here.
+                // occurs when the if statement falls through and there's no else block.
+
                 let combined_block = if let Some(block) = else_block {
 
 
                     let jump_size: isize = block.instruction_size() as isize;
 
-                    let jump_chunk = if jump_size > 127 {
+                    // depending on which jump is emitted we need to add the size of the jump to the offset!!!
+                    // we also need to consider if we're jumping from the START of the jump instruction (we are) vs. the end of the jump instruction
+
+
+                    // TODO: do we pop after an if expression? probably not given expression semantics
+                    // unless we use an if in a statement position
+                    // hence we should probably emit a no-op to jump to after the else block for the main body
+                    let jump_chunk = if jump_size + 2 > 127 {
                         // emit non-"local" jump
-                        build_chunk!(OpCode::JumpFarIfFalse { offset: jump_size }, OpCode::Pop)
+                        build_chunk!(OpCode::JumpFar { offset: jump_size + 2 + (std::mem::size_of::<isize>() as isize) }, OpCode::Pop)
                     } else {
-                        build_chunk!(OpCode::JumpLocalIfFalse { offset: jump_size as i8 }, OpCode::Pop)
+                        // TODO: Why does this have to be 3? what is emitting the 2 after the POP opcode?
+                        // this offset needs to take into account the size of the else block...
+                        build_chunk!(OpCode::JumpLocal { offset: (jump_size + 3) as i8 }, OpCode::Pop)
                     };
 
                     let combined_block = combined_block.merge_chunk(jump_chunk);
                     combined_block.merge_chunk(block)
                 } else {
-                    combined_block
+                    let jump_chunk = build_chunk!(OpCode::JumpLocal { offset: 2 }, OpCode::Pop);
+                    combined_block.merge_chunk(jump_chunk)
                 };
 
                 combined_block

@@ -77,7 +77,7 @@ impl Disassembler for VM {
     fn disassemble_chunk(&mut self, chunk: &[u8]) -> Result<(), DisassembleError> {
         let mut offset: usize = 18;
 
-        debug!("chunk: {:?}", chunk);
+        debug!("chunk: {:X?}", chunk);
 
         // assert chunk header
         assert!(chunk[0..8] == CHUNK_HEADER);
@@ -395,7 +395,8 @@ impl Disassembler for VM {
                             if overflow {
                                 panic!()
                             }
-                            offset = new_off;                        },
+                            offset = new_off;                        
+                        },
                         Some(ThetaValue::Bool(_)) => {
                             debug!("not jumping, top of stack is not false");
                             offset += 2;

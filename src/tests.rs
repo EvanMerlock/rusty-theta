@@ -34,3 +34,13 @@ macro_rules! statement {
         Statement::ExpressionStatement { expression: $stmt, information: () }
     };
 }
+
+#[macro_export]
+macro_rules! if_expression {
+    ($cond:expr, $body:expr) => {
+        Expression::If { check_expression: Box::new($cond), body: Box::new($body), else_body: None, information: () }
+    };
+    ($cond:expr, $body:expr, $else_body:expr) => {
+        Expression::If { check_expression: Box::new($cond), body: Box::new($body), else_body: Some(Box::new($else_body)), information: () }
+    }
+}

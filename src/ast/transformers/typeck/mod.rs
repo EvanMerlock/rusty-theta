@@ -246,6 +246,7 @@ impl ASTVisitor<ParseInfo> for TypeCk {
 
             },
             Expression::If { check_expression, body, else_body, information } => {
+                // TODO: if the else clause does not exist the primary body MUST have the unit type.
                 let check_ty = self.visit_expression(check_expression)?;
                 if check_ty.information().ty != TypeInformation::Boolean {
                     return Err(TransformError::from(TypeCkError::InvalidIfExpressionCheck(check_ty.information().ty.clone())))

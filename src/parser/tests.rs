@@ -1,4 +1,4 @@
-use crate::{lexer::token::{Token, TokenType}, token, literal, binary, statement};
+use crate::{lexer::token::{Token, TokenType}, token, literal, binary, statement, ast::Expression, if_expression};
 
 macro_rules! define_parse_test {
     ($test_name:ident, $input:expr, $output:expr) => {
@@ -53,6 +53,43 @@ const LITERAL_RIGHT_3: Token = Token::new(1, 2, 3, TokenType::True);
 const LITERAL_BINARY_3: Token = Token::new(1, 1, 2, TokenType::EqualEqual);
 const BINARY_TEST_2: [Token; 4] = [LITERAL_LEFT_3, LITERAL_BINARY_3, LITERAL_RIGHT_3, SEMICOLON_TOKEN];
 define_parse_test!(basic_parser_recog_bool, BINARY_TEST_2, AbstractTree::statement(statement!(Expr: binary!(literal!(LITERAL_LEFT_3), LITERAL_BINARY_3, literal!(LITERAL_RIGHT_3))), ()));
+
+const IF_TEST_1: [Token; 6] = [
+    token!(TokenType::If),
+    token!(TokenType::LeftParen),
+    token!(TokenType::True),
+    token!(TokenType::RightParen),
+    token!(TokenType::Integer(1)),
+    token!(TokenType::Semicolon),
+];
+
+const IF_COND_1: Expression<()> = Expression::Literal { literal: token!(TokenType::True), information: () };
+const IF_BODY_1: Expression<()> = Expression::Literal { literal: token!(TokenType::Integer(1)), information: () };
+
+define_parse_test!(basic_parser_if_no_else, IF_TEST_1, AbstractTree::statement(statement!(
+    Expr: if_expression!(IF_COND_1, IF_BODY_1)
+), ()));
+
+const IF_TEST_2: [Token; 8] = [
+    token!(TokenType::If),
+    token!(TokenType::LeftParen),
+    token!(TokenType::True),
+    token!(TokenType::RightParen),
+    token!(TokenType::Integer(1)),
+    token!(TokenType::Else),
+    token!(TokenType::Integer(2)),
+    token!(TokenType::Semicolon),
+];
+
+const IF_COND_2: Expression<()> = Expression::Literal { literal: token!(TokenType::True), information: () };
+const IF_BODY_2: Expression<()> = Expression::Literal { literal: token!(TokenType::Integer(1)), information: () };
+const IF_ELSE_2: Expression<()> = Expression::Literal { literal: token!(TokenType::Integer(2)), information: () };
+
+
+define_parse_test!(basic_parser_if_else, IF_TEST_2, AbstractTree::statement(statement!(
+    Expr: if_expression!(IF_COND_2, IF_BODY_2, IF_ELSE_2)
+), ()));
+
 
 const FAIL_TEST_1: [Token; 3] = [token!(TokenType::LeftBrace), token!(TokenType::RightBrace), token!(TokenType::RightBrace)];
 define_parse_fail_test!(parser_should_fail_extra_closing_braces, FAIL_TEST_1);
