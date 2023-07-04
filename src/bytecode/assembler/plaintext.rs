@@ -1,4 +1,4 @@
-use crate::bytecode::{Chunk};
+use crate::bytecode::{Chunk, OpCode};
 
 use super::{Assembler, AssembleError};
 
@@ -29,11 +29,22 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
 
             writeln!(self.output_file, "-- INSTRUCTIONS --")?;
 
-            let mut offset = 0;
+            let mut code_offset: usize = 0;
             let instructions_in_chunk = chunk.instructions();
             for opcode in instructions_in_chunk {
-                writeln!(self.output_file, "{offset:#X} | Op: {} ({:#X})", opcode.human_readable(), opcode.as_hexcode())?;
-                offset += opcode.size();
+                write!(self.output_file, "{code_offset:#X} | Op: {} ({:#X})", opcode.human_readable(), opcode.as_hexcode())?;
+
+                match opcode {
+                    OpCode::JumpFar { offset } => write!(self.output_file, " -> {:#X}", code_offset as isize + offset)?,
+                    OpCode::JumpLocal { offset } => write!(self.output_file, " -> {:#X}", code_offset as isize + *offset as isize)?,
+                    OpCode::JumpFarIfFalse { offset } => write!(self.output_file, " -> {:#X}", code_offset as isize + offset)?,
+                    OpCode::JumpLocalIfFalse { offset } => write!(self.output_file, " -> {:#X}", code_offset as isize + *offset as isize)?,
+                    _ => {},
+                }
+
+                writeln!(self.output_file)?;
+
+                code_offset += opcode.size();
             }
         }
         Ok(())

@@ -172,7 +172,8 @@ impl Disassembler for VM {
                 },
                 0x3 => { 
                     debug!("Op: Pop (0x3)"); 
-                    self.stack.pop(); 
+                    let pot = self.stack.pop();
+                    debug!("Top of stack: {pot:?}");
                     offset += 1 
                 },
                 0x4 => {
