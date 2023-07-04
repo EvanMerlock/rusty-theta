@@ -268,6 +268,17 @@ impl ASTVisitor<ParseInfo> for TypeCk {
 
                 Ok(Expression::If { check_expression: Box::new(check_ty), body: Box::new(primary_body_type.clone()), else_body: else_body_type, information: TypeCkOutput { ty: primary_body_type.information().ty.clone(), pi: information.clone() } })
             },
+            Expression::BlockExpression { statements, information: info } => {
+                // is it possible for the last statement's type to carry for the block?
+                // we create a new typechecker because we need to look at the symbol table for this block.
+                let internal_typeck = TypeCk::new(info.current_symbol_table.clone());
+                let mut annotated_statements = Vec::new();
+                for statement in statements {
+                    let stmt = internal_typeck.visit_statement(statement)?;
+                    annotated_statements.push(stmt);
+                }
+                Ok(Expression::BlockExpression { statements: annotated_statements, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
+            },
         }
     }
 
@@ -308,17 +319,6 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                 }
 
                 Ok(Statement::VarStatement { ident: ident.clone(), init: aug_expr, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
-            },
-            Statement::BlockStatement { statements, information: info } => {
-                // is it possible for the last statement's type to carry for the block?
-                // we create a new typechecker because we need to look at the symbol table for this block.
-                let internal_typeck = TypeCk::new(info.current_symbol_table.clone());
-                let mut annotated_statements = Vec::new();
-                for statement in statements {
-                    let stmt = internal_typeck.visit_statement(statement)?;
-                    annotated_statements.push(stmt);
-                }
-                Ok(Statement::BlockStatement { statements: annotated_statements, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
             },
         }
     }

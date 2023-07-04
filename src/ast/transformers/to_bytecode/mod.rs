@@ -202,6 +202,21 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 combined_block
 
             },
+            Expression::BlockExpression { statements, information } => {
+                // we are at scope_depth +1 here.
+                // we need to care about scope depth because when expressions are searched, they need to search their localized symbol table for the identifier that matches their scope depth and ID.
+                let mut block_chunk = Chunk::new();
+                for stmt in statements {
+                    block_chunk = block_chunk.merge_chunk(self.visit_statement(stmt)?);
+                }
+                
+                let mut pop_block = Chunk::new();
+                for _i in 0..information.pi.current_symbol_table.borrow().total_locals() {
+                    // TODO: PopN instruction
+                    pop_block.write_to_chunk(OpCode::Pop);
+                }
+                block_chunk.merge_chunk(pop_block)
+            },
         })
     }
 
@@ -246,21 +261,6 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                         }
                     },
                 }
-            },
-            Statement::BlockStatement { statements, information } => {
-                // we are at scope_depth +1 here.
-                // we need to care about scope depth because when expressions are searched, they need to search their localized symbol table for the identifier that matches their scope depth and ID.
-                let mut block_chunk = Chunk::new();
-                for stmt in statements {
-                    block_chunk = block_chunk.merge_chunk(self.visit_statement(stmt)?);
-                }
-                
-                let mut pop_block = Chunk::new();
-                for _i in 0..information.pi.current_symbol_table.borrow().total_locals() {
-                    // TODO: PopN instruction
-                    pop_block.write_to_chunk(OpCode::Pop);
-                }
-                Ok(block_chunk.merge_chunk(pop_block))
             },
         }
     }

@@ -201,26 +201,9 @@ impl<'a> BasicParser<'a> {
         debug!("read statement");
         if let Some(_print_tok) = self.match_token([TokenType::Identifier(String::from("print"))]) {
             self.print_statement()
-        } else if let Some(_block_ty) = self.match_token([TokenType::LeftBrace]) {
-            // block
-            self.begin_scope();
-            let bs = self.block_statement();
-            self.end_scope()?;
-            bs
         } else {
             self.expression_statement()
         }
-    }
-
-    fn block_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
-        debug!("read block");
-        let mut decls = Vec::new();
-        while self.match_token([TokenType::RightBrace, TokenType::Eof]).is_none() {
-            let decl = self.declaration()?;
-            decls.push(decl);
-        }
-
-        Ok(Statement::BlockStatement { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
     }
 
     fn print_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
@@ -242,9 +225,26 @@ impl<'a> BasicParser<'a> {
 
         if let Some(_if_tok) = self.match_token([TokenType::If]) {
             self.if_expression()
+        } else if let Some(_block_ty) = self.match_token([TokenType::LeftBrace]) {
+            // block
+            self.begin_scope();
+            let bs = self.block_expression();
+            self.end_scope()?;
+            bs
         } else {
             self.assignment() 
         }
+    }
+
+    fn block_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
+        debug!("read block");
+        let mut decls = Vec::new();
+        while self.match_token([TokenType::RightBrace, TokenType::Eof]).is_none() {
+            let decl = self.declaration()?;
+            decls.push(decl);
+        }
+
+        Ok(Expression::BlockExpression { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone()) })
     }
 
     fn if_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
