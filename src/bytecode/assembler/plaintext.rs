@@ -1,4 +1,4 @@
-use crate::bytecode::{Chunk, OpCode};
+use crate::bytecode::{Chunk};
 
 use super::{Assembler, AssembleError};
 
@@ -29,37 +29,11 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
 
             writeln!(self.output_file, "-- INSTRUCTIONS --")?;
 
+            let mut offset = 0;
             let instructions_in_chunk = chunk.instructions();
             for opcode in instructions_in_chunk {
-                match opcode {
-                    OpCode::Return => writeln!(self.output_file, "Op: Return (0x0)")?,
-                    OpCode::Constant { offset } => writeln!(self.output_file, "Op: Constant (0x1), with constant {:?}", chunk.constants()[*offset])?,
-                    OpCode::Push => writeln!(self.output_file, "Op: Push (0x2)")?,
-                    OpCode::Pop => writeln!(self.output_file, "Op: Pop (0x3)")?,
-
-                    OpCode::Add => writeln!(self.output_file, "Op: Add (0x4)")?,
-                    OpCode::Subtract => writeln!(self.output_file, "Op: Sub (0x5)")?,
-                    OpCode::Multiply => writeln!(self.output_file, "Op: Mul (0x6)")?,
-                    OpCode::Divide => writeln!(self.output_file, "Op: Div (0x7)")?,
-                    OpCode::Negate => writeln!(self.output_file, "Op: Neg (0x8)")?,
-                    OpCode::Equal => writeln!(self.output_file, "Op: Equal (0x9)")?,
-                    OpCode::GreaterThan => writeln!(self.output_file, "Op: Greater Than (0xA)")?,
-                    OpCode::LessThan => writeln!(self.output_file, "Op: Less Than (0xB)")?,
-
-                    OpCode::DefineGlobal { offset } => writeln!(self.output_file, "Op: Define Global with global name {:?} (0xC0)", chunk.constants()[*offset])?,
-                    OpCode::GetGlobal { offset } => writeln!(self.output_file, "Op: Get Global with global name {:?} (0xC1)", chunk.constants()[*offset])?,
-                    OpCode::DefineLocal { offset } => writeln!(self.output_file, "Op: Define Local with offset {:?} (0xC2)", offset)?,
-                    OpCode::GetLocal { offset } => writeln!(self.output_file, "Op: Get Local wih offset {:?} (0xC3)", offset)?,
-
-                    OpCode::JumpLocal { offset } => writeln!(self.output_file, "Op: Jump Unconditional with offset {:?} (0xD0)", offset)?,
-                    OpCode::JumpLocalIfFalse { offset } => writeln!(self.output_file, "Op: Jump If False with offset {:?} (OxD1)", offset)?,
-
-                    OpCode::JumpFar { offset } => writeln!(self.output_file, "Op: Jump Unconditional Far with offset {:?} (0xD2)", offset)?,
-                    OpCode::JumpFarIfFalse { offset } => writeln!(self.output_file, "Op: Jump Far If False with offset {:?} (OxD3)", offset)?,
-
-
-                    OpCode::DebugPrint => writeln!(self.output_file, "Op: DebugPrint (0xFF)")?,
-                };
+                writeln!(self.output_file, "{offset:#X} | Op: {} ({:#X})", opcode.human_readable(), opcode.as_hexcode())?;
+                offset += opcode.size();
             }
         }
         Ok(())
