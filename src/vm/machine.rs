@@ -51,6 +51,10 @@ impl VM {
         self.constants.clear()
     }
 
+    pub fn clean_stack(&mut self) {
+        self.stack.clean_frame()
+    }
+
     pub fn intern_string(&mut self, s_val: ThetaString) -> ThetaValue {
         let hv = match self.strings.get(&s_val) {
             Some(rc) => rc.clone(),
@@ -159,21 +163,22 @@ impl Disassembler for VM {
                     offset += 1 
                 },
                 0x1 => { 
-                    debug!("Op: Constant (0x1) with offset: {}", &chunk[offset+1]); 
+                    debug!("Op: Constant (0x1) with offset: {:#X}", &chunk[offset+1]); 
                     self.stack.push(self.constants[chunk[offset+1] as usize].clone()); 
                     offset += 2 
                 },
                 0x2 => { 
-                    debug!("Op: Push (0x2)");
+                    debug!("Op: Push (0x2) with inc size {:#X}", chunk[offset+1]);
+                    let stack_inc_size = usize::from_le_bytes(chunk[offset+1..offset+9].try_into().expect("8 ele slice not converted"));
                     // TODO: what the heck is this supposed to push onto the stack?
                     // Should it take in a heap value and push a pointer to that heap value to the stack? 
-                    todo!();
-                    // offset += 1 
+                    self.stack.alloc_framespace(stack_inc_size);
+                    offset += 1 + std::mem::size_of::<usize>()
                 },
                 0x3 => { 
                     debug!("Op: Pop (0x3)"); 
                     let pot = self.stack.pop();
-                    debug!("Top of stack: {pot:?}");
+                    debug!("Popped from top of stack: {pot:?}");
                     offset += 1 
                 },
                 0x4 => {
@@ -297,7 +302,7 @@ impl Disassembler for VM {
                     offset += 1
                 },
                 0xC0 => { 
-                    debug!("Op: Define Global (0xC0) with offset: {}", chunk[offset+1] as usize);
+                    debug!("Op: Define Global (0xC0) with offset: {:#X}", chunk[offset+1] as usize);
                     let glob = self.constants[chunk[offset+1] as usize].clone();
                     match glob {
                         ThetaValue::HeapValue(hv) => {
@@ -331,19 +336,19 @@ impl Disassembler for VM {
                     offset += 2
                 },
                 0xC2 => { 
-                    debug!("Op: Define Local (0xC0) with offset: {}", chunk[offset+1] as usize);
+                    debug!("Op: Define Local (0xC0) with offset: {:#X}", chunk[offset+1] as usize);
                     let li = chunk[offset+1] as usize;
                     self.stack.set_local(li);
                     offset += 2
                 },
                 0xC3 => { 
-                    debug!("Op: Read Local (0xC1) with offset: {}", chunk[offset+1] as usize);
+                    debug!("Op: Read Local (0xC1) with offset: {:#X}", chunk[offset+1] as usize);
                     let li = chunk[offset+1] as usize;
                     self.stack.push(self.stack.get_local(li).expect("local does not exist when it should").clone());
                     offset += 2
                 },
                 0xD0 => {
-                    debug!("Op: Jump Unconditional (0xD0) with offset: {}", chunk[offset+1] as usize);
+                    debug!("Op: Jump Unconditional (0xD0) with offset: {:#X}", chunk[offset+1] as usize);
                     let local_jump_point = chunk[offset+1] as i8;
                     let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point as isize);
                     if overflow {
@@ -352,7 +357,7 @@ impl Disassembler for VM {
                     offset = new_off;
                 },
                 0xD1 => {
-                    debug!("Op: Jump If False Local (0xD1) with offset: {}", chunk[offset+1] as usize);
+                    debug!("Op: Jump If False Local (0xD1) with offset: {:#X}", chunk[offset+1] as usize);
                     let local_jump_point = chunk[offset+1] as i8;
 
                     // this op should not pop off the stack, we should instead emit an instruction to do that.
@@ -376,7 +381,7 @@ impl Disassembler for VM {
                     }
                 },
                 0xD2 => {
-                    debug!("Op: Jump Unconditional Far (0xD2) with offset: {}", chunk[offset+1] as usize);
+                    debug!("Op: Jump Unconditional Far (0xD2) with offset: {:#X}", chunk[offset+1] as usize);
                     let local_jump_point = isize::from_le_bytes(chunk[offset+1..offset+9].try_into().expect("8 ele slice not converted"));
                     let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point as isize);
                     if overflow {
@@ -385,7 +390,7 @@ impl Disassembler for VM {
                     offset = new_off;                
                 },
                 0xD3 => {
-                    debug!("Op: Jump If False Far (0xD3) with offset: {}", chunk[offset+1] as usize);
+                    debug!("Op: Jump If False Far (0xD3) with offset: {:#X}", chunk[offset+1] as usize);
                     let local_jump_point = isize::from_le_bytes(chunk[offset+1..offset+9].try_into().expect("8 ele slice not converted"));
 
                     // this op should not pop off the stack, we should instead emit an instruction to do that.
@@ -408,6 +413,10 @@ impl Disassembler for VM {
                         }
                     }
                 },
+                0xFD => {
+                    debug!("Op: Noop (0xFD)");
+                    offset += 1
+                }
                 0xFF => { 
                     debug!("Op: Print (0xFF)"); 
                     println!("{:?}", self.stack.pop()); 

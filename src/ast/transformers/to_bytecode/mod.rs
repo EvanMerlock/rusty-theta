@@ -18,10 +18,29 @@ impl ASTTransformer<TypeCkOutput> for ToByteCode {
         &self,
         tree: &AbstractTree<TypeCkOutput>,
     ) -> Result<Chunk, super::TransformError> {
-        Ok(match tree.inner() {
+        // TODO: insert chunk prologue here when necessary
+        // should only occur on stack boundaries
+        // in interpreter mode, this can happen on expression / statement bounds.
+        let local_size = tree.information().pi.frame_data.borrow().total_locals();
+        let mut block_chunk = if local_size > 0 { 
+            let mut block_chunk = Chunk::new();
+            block_chunk.write_to_chunk(OpCode::Push { size: local_size });
+            block_chunk
+        } else {
+            Chunk::new()
+        };
+
+        block_chunk = block_chunk.merge_chunk(match tree.inner() {
             InnerAbstractTree::Expression(exp) => ToByteCode.visit_expression(&exp.0)?,
             InnerAbstractTree::Statement(stmt) => ToByteCode.visit_statement(&stmt.0)?,
-        })
+        });
+
+        let mut pop_block = Chunk::new();
+        for _i in 0..local_size {
+            // TODO: PopN instruction
+            pop_block.write_to_chunk(OpCode::Pop);
+        }
+        Ok(block_chunk.merge_chunk(pop_block))
     }
 }
 
@@ -141,8 +160,8 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 // TODO: if this overflows code you can execute code at a different location
                 let jump_size = body_block.instruction_size() as isize;
                 let jump_size: isize = jump_size + match &else_block {
-                    Some(block) => block.instruction_size() as isize,
-                    None => 0
+                    Some(_) => 2,
+                    None => 2
                 };
 
                 // depending on which jump is emitted we need to add the size of the jump to the offset!!!
@@ -195,27 +214,27 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     let combined_block = combined_block.merge_chunk(jump_chunk);
                     combined_block.merge_chunk(block)
                 } else {
-                    let jump_chunk = build_chunk!(OpCode::JumpLocal { offset: 2 }, OpCode::Pop);
+                    // let second_op = match body.information().ty {
+                    //     super::typeck::TypeInformation::None => OpCode::Noop,
+                    //     _ => OpCode::Pop
+                    // };
+
+                    let jump_chunk = build_chunk!(OpCode::JumpLocal { offset: 3 }, OpCode::Pop);
                     combined_block.merge_chunk(jump_chunk)
                 };
 
                 combined_block
 
             },
-            Expression::BlockExpression { statements, information } => {
+            Expression::BlockExpression { statements, information: _ } => {
                 // we are at scope_depth +1 here.
                 // we need to care about scope depth because when expressions are searched, they need to search their localized symbol table for the identifier that matches their scope depth and ID.
                 let mut block_chunk = Chunk::new();
                 for stmt in statements {
                     block_chunk = block_chunk.merge_chunk(self.visit_statement(stmt)?);
                 }
-                
-                let mut pop_block = Chunk::new();
-                for _i in 0..information.pi.current_symbol_table.borrow().total_locals() {
-                    // TODO: PopN instruction
-                    pop_block.write_to_chunk(OpCode::Pop);
-                }
-                block_chunk.merge_chunk(pop_block)
+
+                block_chunk
             },
         })
     }
@@ -226,9 +245,15 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
     ) -> Result<Self::Out, super::TransformError> {
         match stmt {
             Statement::ExpressionStatement { expression, information: _ } => {
-                let pop_chunk = build_chunk!(OpCode::Pop);
                 let expr_chunk = self.visit_expression(expression)?;
-                Ok(expr_chunk.merge_chunk(pop_chunk))
+
+                match expression.information().ty {
+                    super::typeck::TypeInformation::None => Ok(expr_chunk),
+                    _ => {
+                        let pop_chunk = build_chunk!(OpCode::Pop);
+                        Ok(expr_chunk.merge_chunk(pop_chunk))        
+                    }
+                }
             },
             Statement::PrintStatement { expression, information: _ } => {
                 let print_chunk = build_chunk!(OpCode::DebugPrint);

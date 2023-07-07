@@ -6,7 +6,7 @@
 pub enum OpCode {
     Return,
     Constant { offset: usize },
-    Push,
+    Push { size: usize },
     Pop,
     Add,
     Subtract,
@@ -29,6 +29,7 @@ pub enum OpCode {
     DefineLocal { offset: usize },
     GetLocal { offset: usize },
 
+    Noop,
     DebugPrint,
 }
 
@@ -38,7 +39,7 @@ impl OpCode {
         match self {
             OpCode::Return => 1,
             OpCode::Constant { offset: _ } => 2,
-            OpCode::Push => 1,
+            OpCode::Push { size: _ } => 1 + std::mem::size_of::<usize>(),
             OpCode::Pop => 1,
             OpCode::Add => 1,
             OpCode::Subtract => 1,
@@ -57,14 +58,15 @@ impl OpCode {
             OpCode::DebugPrint => 2,
             OpCode::JumpFar { offset: _ } => 1 + std::mem::size_of::<isize>(),
             OpCode::JumpFarIfFalse { offset: _ } => 1 + std::mem::size_of::<isize>(),
+            OpCode::Noop => 1,
         }
     }
 
     pub fn human_readable(&self) -> String {
         match self {
             OpCode::Return => "Return".to_string(),
-            OpCode::Constant { offset } => format!("Constant with offset {offset:#x}"),
-            OpCode::Push => "Push".to_string(),
+            OpCode::Constant { offset } => format!("Constant with offset {offset:#X}"),
+            OpCode::Push { size } => format!("Push with size {size:#X}"),
             OpCode::Pop => "Pop".to_string(),
             OpCode::Add => "Add".to_string(),
             OpCode::Subtract => "Subtract".to_string(),
@@ -74,15 +76,16 @@ impl OpCode {
             OpCode::Equal => "Equal".to_string(),
             OpCode::GreaterThan => "Greater Than".to_string(),
             OpCode::LessThan => "Less Than".to_string(),
-            OpCode::JumpLocal { offset } => format!("Jump (local) unconditional with offset {offset:#x}"),
-            OpCode::JumpLocalIfFalse { offset } => format!("Jump (local) if false with offset {offset:#x}"),
-            OpCode::JumpFar { offset } => format!("Jump (far) unconditional with offset {offset:#x}"),
-            OpCode::JumpFarIfFalse { offset } => format!("Jump (far) if false with offset {offset:#x}"),
-            OpCode::DefineGlobal { offset } => format!("Define global variable with offset {offset:#x}"),
-            OpCode::GetGlobal { offset } => format!("Retrieve global variable with offset {offset:#x}"),
-            OpCode::DefineLocal { offset } => format!("Define local variable with offset {offset:#x}"),
-            OpCode::GetLocal { offset } => format!("Get local variable with offset {offset:#x}"),
+            OpCode::JumpLocal { offset } => format!("Jump (local) unconditional with offset {offset:#X}"),
+            OpCode::JumpLocalIfFalse { offset } => format!("Jump (local) if false with offset {offset:#X}"),
+            OpCode::JumpFar { offset } => format!("Jump (far) unconditional with offset {offset:#X}"),
+            OpCode::JumpFarIfFalse { offset } => format!("Jump (far) if false with offset {offset:#X}"),
+            OpCode::DefineGlobal { offset } => format!("Define global variable with offset {offset:#X}"),
+            OpCode::GetGlobal { offset } => format!("Retrieve global variable with offset {offset:#X}"),
+            OpCode::DefineLocal { offset } => format!("Define local variable with offset {offset:#X}"),
+            OpCode::GetLocal { offset } => format!("Get local variable with offset {offset:#X}"),
             OpCode::DebugPrint => format!("Debug print"),
+            OpCode::Noop => "Noop".to_string(),
         }
     }
 
@@ -90,7 +93,7 @@ impl OpCode {
         match self {
             OpCode::Return => 0x0,
             OpCode::Constant { offset: _ } => 0x1,
-            OpCode::Push => 0x2,
+            OpCode::Push { size: _ } => 0x2,
             OpCode::Pop => 0x3,
             OpCode::Add => 0x4,
             OpCode::Subtract => 0x5,
@@ -109,6 +112,7 @@ impl OpCode {
             OpCode::DefineLocal { offset: _ } => 0xC2,
             OpCode::GetLocal { offset: _ } => 0xC3,
             OpCode::DebugPrint => 0xFF,
+            OpCode::Noop => 0xFD,
         }
     }
 }

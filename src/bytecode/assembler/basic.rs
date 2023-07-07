@@ -58,7 +58,11 @@ impl<'a> Assembler for BasicAssembler<'a> {
                 match opcode {
                     OpCode::Return => self.output_file.write(&[0u8])?,
                     OpCode::Constant { offset } => self.output_file.write(&[1u8, *offset as u8])?,
-                    OpCode::Push => self.output_file.write(&[2u8])?,
+                    OpCode::Push { size } => {
+                        let off_bytes = size.to_le_bytes();
+                        self.output_file.write(&[2u8])?;
+                        self.output_file.write(&off_bytes)?
+                    },
                     OpCode::Pop => self.output_file.write(&[3u8])?,
 
                     OpCode::Add => self.output_file.write(&[4u8])?,
@@ -108,6 +112,7 @@ impl<'a> Assembler for BasicAssembler<'a> {
                     }
 
                     OpCode::DebugPrint => self.output_file.write(&[0xFFu8])?,
+                    OpCode::Noop => self.output_file.write(&[0xFDu8])?,
                 };
             }
         }

@@ -13,6 +13,13 @@ pub enum InnerAbstractTree<T> where T: Debug + PartialEq {
 }
 
 impl<T> AbstractTree<T> where T: Debug + PartialEq {
+    pub fn information(&self) -> &T {
+        match &self.inner {
+            InnerAbstractTree::Expression((_, info)) => &info,
+            InnerAbstractTree::Statement((_, info)) => &info,
+        }
+    }
+
     pub fn expression(expression: Expression<T>, information: T) -> AbstractTree<T> {
         AbstractTree {
             inner: InnerAbstractTree::Expression((expression, information))

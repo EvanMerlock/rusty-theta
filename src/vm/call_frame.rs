@@ -5,7 +5,6 @@ use crate::bytecode::ThetaValue;
 #[derive(Debug)]
 pub struct ThetaStack {
     globals: HashMap<String, ThetaValue>,
-    top_level_locals: Vec<ThetaValue>,
     // These frames should be colocated near each other to provide spatial locality.
     // However, that's not as easy as it sounds in Rust. I think a Vec<> should provide spatial locality
     // _within_ the Vec but I don't know the defined behavior.
@@ -14,7 +13,7 @@ pub struct ThetaStack {
 
 impl ThetaStack {
     pub fn new() -> ThetaStack {
-        ThetaStack { globals: HashMap::new(), top_level_locals: Vec::new(), frames: Vec::new() }
+        ThetaStack { globals: HashMap::new(), frames: vec![ThetaCallFrame::new(vec![], 0)] }
     }
 
     pub fn curr_frame(&self) -> Option<&ThetaCallFrame> {
@@ -33,40 +32,54 @@ impl ThetaStack {
         self.frames.pop()
     }
 
-    pub fn push(&mut self, loc: ThetaValue) {
+    pub fn alloc_framespace(&mut self, size: usize) {
         match self.curr_frame_mut() {
-            Some(frame) => frame.locals.push(loc),
-            None => self.top_level_locals.push(loc),
+            Some(frame) => frame.locals.resize(frame.locals.len() + size, None),
+            None => todo!()
+        }
+    }
+
+    pub fn clean_frame(&mut self) {
+        self.frames = vec![ThetaCallFrame::new(vec![], 0)]
+    }
+
+    pub fn push(&mut self, loc: ThetaValue) {
+        // TODO: because this is called when a constant is loaded we need
+        // to track all constants to ensure enough stack space is allocated
+        match self.curr_frame_mut() {
+            Some(frame) => frame.locals.push(Some(loc)),
+            None => panic!("all frames gone"),
         }
     }
 
     pub fn pop(&mut self) -> Option<ThetaValue> {
         match self.curr_frame_mut() {
-            Some(frame) => frame.locals.pop(),
-            None => self.top_level_locals.pop(),
+            Some(frame) => ThetaStack::flatten_stackval(frame.locals.pop()),
+            None => panic!("all frames gone"),
         }
     }
 
     pub fn peek(&self) -> Option<&ThetaValue> {
         match self.curr_frame() {
-            Some(frame) => frame.locals.last(),
-            None => self.top_level_locals.last()
+            Some(frame) => ThetaStack::flatten_refstackval(frame.locals.last()),
+            None => panic!("all frames gone")
         }
     }
 
     pub fn set_local(&mut self, li: usize) {
+        // TODO: we should have an instruction as a prefix to allocate stack space
         // this can set a local into a slot with no local in it. we need to allocate empty space in the vec on the fly
         let tv = self.peek().expect("value not on stack").clone();
         match self.curr_frame_mut() {
-            Some(frame) => frame.locals[li] = tv,
-            None => self.top_level_locals[li] = tv,
+            Some(frame) => frame.locals[li] = Some(tv),
+            None => panic!("all frames gone"),
         }
     }
 
     pub fn get_local(&self, li: usize) -> Option<&ThetaValue> {
         match self.curr_frame() {
-            Some(frame) => frame.locals.get(li),
-            None => self.top_level_locals.get(li)
+            Some(frame) => ThetaStack::flatten_refstackval(frame.locals.get(li)),
+            None => panic!("all frames gone")
         }
     }
 
@@ -76,6 +89,14 @@ impl ThetaStack {
 
     pub fn globals_mut(&mut self) -> &mut HashMap<String, ThetaValue> {
         &mut self.globals
+    }
+
+    fn flatten_stackval(val: Option<Option<ThetaValue>>) -> Option<ThetaValue> {
+        val.flatten()
+    }
+
+    fn flatten_refstackval(val: Option<&Option<ThetaValue>>) -> Option<&ThetaValue> {
+        val.unwrap_or(&None).as_ref()
     }
 }
 
@@ -94,7 +115,7 @@ pub struct ThetaCallFrame {
     params: Vec<ThetaValue>,
     rip: usize,
     // locals are uninitalized when created. we might need to make this an option and panic on fail
-    locals: Vec<ThetaValue>,
+    locals: Vec<Option<ThetaValue>>,
 }
 
 impl ThetaCallFrame {
