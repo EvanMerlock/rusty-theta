@@ -40,6 +40,11 @@ pub enum Expression<T> where T: Debug + PartialEq {
     BlockExpression {
         statements: Vec<Statement<T>>,
         information: T,
+    },
+    LoopExpression {
+        predicate: Option<Box<Expression<T>>>,
+        body: Box<Expression<T>>,
+        information: T,
     }
 }
 
@@ -53,6 +58,7 @@ impl<T: Debug + PartialEq> Expression<T> {
             Expression::Assignment { name: _, value: _, information } => information,
             Expression::If { check_expression: _, body: _, else_body: _, information } => information,
             Expression::BlockExpression { statements: _, information } => information,
+            Expression::LoopExpression { predicate: _, body: _, information } => information,
         }
     }
 
@@ -65,6 +71,7 @@ impl<T: Debug + PartialEq> Expression<T> {
             Expression::Assignment { name, value, information: _ } => Expression::Assignment { name, value: Box::new(value.strip_information()), information: () },
             Expression::If { check_expression, body, else_body, information: _ } => Expression::If { check_expression: Box::new(check_expression.strip_information()), body: Box::new(body.strip_information()), else_body: else_body.map(|stmt| Box::new(stmt.strip_information())), information: () },
             Expression::BlockExpression { statements, information: _ } => { Expression::BlockExpression { statements: statements.into_iter().map(|x| x.strip_information()).collect(), information: () } },
+            Expression::LoopExpression { predicate, body, information: _ } => Expression::LoopExpression { predicate: predicate.map(|x| Box::new(x.strip_information())), body: Box::new(body.strip_information()), information: () },
         }
     }
 }

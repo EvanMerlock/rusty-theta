@@ -134,11 +134,20 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     .reduce(|acc, new| acc.merge_chunk(new))
                     .expect("expression vec was empty in seq")
             }
-            Expression::Assignment { name, value, information: _ } => {
+            Expression::Assignment { name, value, information } => {
                 let st = ThetaConstant::Str(name.id().clone());
                 let set_chunk = self.visit_expression(value)?;
-                let glob_chunk = build_chunk!(OpCode::DefineGlobal { offset: 0 }; st);
-                set_chunk.merge_chunk(glob_chunk)
+                // TODO: this needs to properly check if it's assigning to a global
+                // or a local and continue from there
+                let sd = information.pi.scope_depth;
+                // TODO: this needs to fail gracefully
+                let sym_data = information.pi.current_symbol_table.borrow().get_symbol_data(name, sd).expect("failed to find symbol in symbol table which was asked for");
+                let chunk = match sym_data {
+                    SymbolData::Type { ty: _ } => panic!("type where variable expected"),
+                    SymbolData::GlobalVariable { ty: _ } => build_chunk!(OpCode::DefineGlobal { offset: 0 }; st),
+                    SymbolData::LocalVariable { ty: _, scope_level: _, slot } => build_chunk!(OpCode::DefineLocal { offset: slot }; st),
+                };
+                set_chunk.merge_chunk(chunk)
             },
             Expression::If { check_expression, body, else_body, information: _ } => {
                 let check_block = self.visit_expression(check_expression)?;
@@ -207,6 +216,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                         build_chunk!(OpCode::JumpFar { offset: jump_size + 2 + (std::mem::size_of::<isize>() as isize) }, OpCode::Pop)
                     } else {
                         // TODO: Why does this have to be 3? what is emitting the 2 after the POP opcode?
+                        // 3 because i8 + 2. why 2?
                         // this offset needs to take into account the size of the else block...
                         build_chunk!(OpCode::JumpLocal { offset: (jump_size + 3) as i8 }, OpCode::Pop)
                     };
@@ -236,6 +246,37 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
 
                 block_chunk
             },
+            Expression::LoopExpression { predicate, body, information: _ } => {
+                let enc_pred = if let Some(x) = predicate {
+                    self.visit_expression(x)?
+                } else {
+                    Chunk::new()
+                };
+
+                let body_chunk = self.visit_expression(&body)?;
+
+                // TODO: this might not bypass the jump_to_beginning chunk...
+                // jump_to_beginning might be jump far or jump local. we need to know the size of the pred + body here
+                // which we do know.
+                let jump_to_end_chunk = if body_chunk.instruction_size() > 127 {
+                    build_chunk!(OpCode::JumpFarIfFalse { offset: -(body_chunk.instruction_size() as isize) })
+                } else {
+                    build_chunk!(OpCode::JumpLocalIfFalse { offset: -(body_chunk.instruction_size() as i8) })
+                };
+
+
+                let loop_head = enc_pred.merge_chunk(jump_to_end_chunk).merge_chunk(body_chunk);
+
+                let jump_to_beginning_chunk = if loop_head.instruction_size() > 127 {
+                    build_chunk!(OpCode::JumpFarIfFalse { offset: -(loop_head.instruction_size() as isize) })
+                } else {
+                    build_chunk!(OpCode::JumpLocalIfFalse { offset: -(loop_head.instruction_size() as i8) })
+                };
+
+                let loop_chunk = loop_head.merge_chunk(jump_to_beginning_chunk);
+
+                loop_chunk
+            },
         })
     }
 
@@ -263,6 +304,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
             Statement::VarStatement { ident, init, information: info } => {
                 // we will emit the initializer and then define the global here. note that `information` may eventually carry scoping information
                 // for now all variables are globals. this should change when lexical scoping is added
+                // TODO: should we pop here?
                 match info.pi.scope_depth {
                     0 => {
                         // emit global when sd == 0

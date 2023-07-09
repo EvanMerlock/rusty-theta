@@ -26,6 +26,7 @@ pub enum TypeCkError {
     InvalidAssignment(TypeInformation, TypeInformation),
     InvalidIfExpressionCheck(TypeInformation),
     InvalidIfBranches(TypeInformation, TypeInformation),
+    InvalidPredicate(TypeInformation),
 }
 
 impl Error for TypeCkError {
@@ -50,6 +51,7 @@ impl Display for TypeCkError {
             TypeCkError::InvalidLiteralInPosition(tk) => write!(f, "!! A non-literal token was found where a literal was expected: {} !!", tk),
             TypeCkError::InvalidIfExpressionCheck(ty) => write!(f, "Type Mismatch! Expected boolean, instead an if expression produced: {}", ty),
             TypeCkError::InvalidIfBranches(ty_l, ty_r) => write!(f, "Type Mismatch! Primary If Body: {}, Else Body: {}", ty_l, ty_r),
+            TypeCkError::InvalidPredicate(ty) => write!(f, "Type Mismatch! Expected boolean, got: {ty}"),
         }
     }
 }
@@ -278,6 +280,24 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                     annotated_statements.push(stmt);
                 }
                 Ok(Expression::BlockExpression { statements: annotated_statements, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
+            },
+            Expression::LoopExpression { predicate, body, information } => {
+                let predicate_checked = if let Some(pred_body) = predicate {
+                    let pred = Box::new(self.visit_expression(&pred_body)?);
+
+                    if pred.information().ty != TypeInformation::Boolean {
+                        return Err(TransformError::TypeCkError(TypeCkError::InvalidPredicate(pred.information().ty.clone())))
+                    }
+
+                    Some(pred)
+                } else {
+                    None
+                };
+
+                let body_checked = Box::new(self.visit_expression(&body)?);
+                let body_ty = body_checked.information().ty.clone();
+
+                Ok(Expression::LoopExpression { predicate: predicate_checked, body: body_checked, information: TypeCkOutput { ty: body_ty, pi: information.clone() } })
             },
         }
     }

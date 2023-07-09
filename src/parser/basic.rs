@@ -180,7 +180,7 @@ impl<'a> BasicParser<'a> {
         };
         self.consume(TokenType::Semicolon, "Expected ';' after statement")?;
 
-        // TODO
+        // TODO:
         // if double `let` we should fail here, since that isn't valid (yet)
         // once a binding is created it can only be undone by exiting the scope the binding is valid in.
         // note that in a language with better bind semantics a rebind would be valid and could change the type of the variable
@@ -193,7 +193,11 @@ impl<'a> BasicParser<'a> {
                 self.symbol_tbl.borrow_mut().insert_symbol(ident.clone(), SymbolData::GlobalVariable { ty: ty_info });
             },
             sd => {
+                // TODO:
                 // symbol table does not do debouncing of symbols yet. need a combination of scope_depth and identifier to ensure variables cannot collide.
+                // this is because we could have 2 variable declarations with different types in 2 lexical scopes
+                // I'm not sure why I didn't split symbol tables by lexical bounds here...
+                // maybe because of local totals. fixed with a FrameData struct so maybe we can move back to lexical bounded symbol tables.
                 let li = self.frame_data.borrow_mut().new_local();
                 // slot determined by # of seen variables
                 self.symbol_tbl.borrow_mut().insert_symbol(ident.clone(), SymbolData::LocalVariable { ty: ty_info, scope_level: sd, slot: li });
