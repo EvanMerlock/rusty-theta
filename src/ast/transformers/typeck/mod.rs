@@ -283,7 +283,7 @@ impl ASTVisitor<ParseInfo> for TypeCk {
             },
             Expression::LoopExpression { predicate, body, information } => {
                 let predicate_checked = if let Some(pred_body) = predicate {
-                    let pred = Box::new(self.visit_expression(&pred_body)?);
+                    let pred = Box::new(self.visit_expression(pred_body)?);
 
                     if pred.information().ty != TypeInformation::Boolean {
                         return Err(TransformError::TypeCkError(TypeCkError::InvalidPredicate(pred.information().ty.clone())))
@@ -294,7 +294,7 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                     None
                 };
 
-                let body_checked = Box::new(self.visit_expression(&body)?);
+                let body_checked = Box::new(self.visit_expression(body)?);
                 let body_ty = body_checked.information().ty.clone();
 
                 Ok(Expression::LoopExpression { predicate: predicate_checked, body: body_checked, information: TypeCkOutput { ty: body_ty, pi: information.clone() } })

@@ -70,7 +70,7 @@ impl Repl {
                 debug!("sym: {:?}", sym.borrow());
                 let type_cker = TypeCk::new(sym.clone());
                 self.tbl = sym.clone();
-                let type_check = type_cker.transform(&ast)?;
+                let type_check = type_cker.transform(ast)?;
                 let chunk = ToByteCode.transform(&type_check)?;
                 let chunks: Vec<Chunk> = vec![chunk];
                 {

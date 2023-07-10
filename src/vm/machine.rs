@@ -383,7 +383,7 @@ impl Disassembler for VM {
                 0xD2 => {
                     debug!("Op: Jump Unconditional Far (0xD2) with offset: {:#X}", chunk[offset+1] as usize);
                     let local_jump_point = isize::from_le_bytes(chunk[offset+1..offset+9].try_into().expect("8 ele slice not converted"));
-                    let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point as isize);
+                    let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point);
                     if overflow {
                         panic!()
                     }
@@ -397,7 +397,7 @@ impl Disassembler for VM {
                     match self.stack.peek() {
                         Some(ThetaValue::Bool(false)) => {
                             debug!("jumping because top of stack is false");
-                            let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point as isize);
+                            let (new_off, overflow) = offset.overflowing_add_signed(local_jump_point);
                             if overflow {
                                 panic!()
                             }

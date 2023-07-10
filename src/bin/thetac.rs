@@ -52,12 +52,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tokens = lexer.lex()?;
     let mut token_stream = tokens.into_iter();
     let tbl = Rc::new(RefCell::new(SymbolTable::default()));
-    let parser = BasicParser::new_sym(&mut token_stream, tbl.clone());
+    let parser = BasicParser::new_sym(&mut token_stream, tbl);
     let trees = parser.parse()?;
     let (ast, sym) = &trees[0];
     debug!("sym: {:?}", sym.borrow());
     let type_cker = TypeCk::new(sym.clone());
-    let type_check = type_cker.transform(&ast)?;
+    let type_check = type_cker.transform(ast)?;
     let chunk = ToByteCode.transform(&type_check)?;
     let chunks: Vec<Chunk> = vec![chunk];
 

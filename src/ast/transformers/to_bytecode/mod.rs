@@ -199,7 +199,9 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 // TODO: we are missing a POP somewhere in here.
                 // occurs when the if statement falls through and there's no else block.
 
-                let combined_block = if let Some(block) = else_block {
+                
+
+                if let Some(block) = else_block {
 
 
                     let jump_size: isize = block.instruction_size() as isize;
@@ -231,9 +233,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
 
                     let jump_chunk = build_chunk!(OpCode::JumpLocal { offset: 3 }, OpCode::Pop);
                     combined_block.merge_chunk(jump_chunk)
-                };
-
-                combined_block
+                }
 
             },
             Expression::BlockExpression { statements, information: _ } => {
@@ -253,7 +253,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     Chunk::new()
                 };
 
-                let body_chunk = self.visit_expression(&body)?;
+                let body_chunk = self.visit_expression(body)?;
 
                 // TODO: this might not bypass the jump_to_beginning chunk...
                 // jump_to_beginning might be jump far or jump local. we need to know the size of the pred + body here
@@ -273,9 +273,9 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     build_chunk!(OpCode::JumpLocalIfFalse { offset: -(loop_head.instruction_size() as i8) })
                 };
 
-                let loop_chunk = loop_head.merge_chunk(jump_to_beginning_chunk);
+                
 
-                loop_chunk
+                loop_head.merge_chunk(jump_to_beginning_chunk)
             },
         })
     }

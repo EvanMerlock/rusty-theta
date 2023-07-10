@@ -84,7 +84,7 @@ impl OpCode {
             OpCode::GetGlobal { offset } => format!("Retrieve global variable with offset {offset:#X}"),
             OpCode::DefineLocal { offset } => format!("Define local variable with offset {offset:#X}"),
             OpCode::GetLocal { offset } => format!("Get local variable with offset {offset:#X}"),
-            OpCode::DebugPrint => format!("Debug print"),
+            OpCode::DebugPrint => "Debug print".to_string(),
             OpCode::Noop => "Noop".to_string(),
         }
     }

@@ -25,3 +25,9 @@ impl FrameData {
         self.total_locals
     }
 }
+
+impl Default for FrameData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
