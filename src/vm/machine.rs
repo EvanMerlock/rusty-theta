@@ -424,7 +424,8 @@ impl Disassembler for VM {
                 },
                 code => { 
                     debug!("Op: Unknown ({:#x})", code); 
-                    offset += 1 
+                    panic!("unknown");
+                    offset += 1
                 }
             }
         }

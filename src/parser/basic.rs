@@ -235,6 +235,8 @@ impl<'a> BasicParser<'a> {
 
         if let Some(_if_tok) = self.match_token([TokenType::If]) {
             self.if_expression()
+        } else if let Some(_while_tok) = self.match_token([TokenType::While]) {
+            self.while_expression()
         } else if let Some(_block_ty) = self.match_token([TokenType::LeftBrace]) {
             // block
             self.begin_scope();
@@ -279,6 +281,25 @@ impl<'a> BasicParser<'a> {
         };
 
         Ok(Expression::If { check_expression: Box::new(check_expr), body: Box::new(body_expr), else_body: else_clause, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+    }
+
+    fn while_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
+        debug!("while expression");
+        // consume the while expression
+        let predicate = if let Some(_left_paren) = self.match_token([TokenType::LeftParen]) {
+            let predicate_expression = self.expression()?;
+            self.consume(TokenType::RightParen, "Expected ')' after while keyword with predicate")?;
+            Some(Box::new(predicate_expression))
+        } else {
+            None
+        };
+
+        // grab the expression which should exist after the while block
+        // TODO: enforce braces around while blocks
+
+        let body_expr = self.expression()?;
+
+        Ok(Expression::LoopExpression { predicate, body: Box::new(body_expr), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
 
     }
 

@@ -59,6 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let type_cker = TypeCk::new(sym.clone());
     let type_check = type_cker.transform(ast)?;
     let chunk = ToByteCode.transform(&type_check)?;
+    debug!("chunk: {:?}", chunk);
     let chunks: Vec<Chunk> = vec![chunk];
 
     {

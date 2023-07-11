@@ -46,6 +46,7 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
 
                 code_offset += opcode.size();
             }
+            writeln!(self.output_file, "=== CHUNK END @ {code_offset:#X} ===")?;
         }
         Ok(())
     }

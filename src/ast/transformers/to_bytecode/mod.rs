@@ -112,7 +112,8 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                             let local = info.pi.current_symbol_table.borrow().get_symbol_data(&Symbol::from(id.clone()), sd);
                             match local {
                                 Some(SymbolData::Type { ty: _ }) => return Err(TransformError::from(ToByteCodeError::InvalidLocal(id))),
-                                Some(SymbolData::GlobalVariable { ty: _ }) => return Err(TransformError::from(ToByteCodeError::InvalidLocal(id))),
+                                // TODO: not correct. need to track globals across CUs
+                                Some(SymbolData::GlobalVariable { ty: _ }) => build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaConstant::Str(id)),
                                 Some(SymbolData::LocalVariable { ty: _, scope_level: _, slot }) => {
                                     build_chunk!(OpCode::GetLocal { offset: slot })
                                 },
@@ -144,6 +145,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 let sym_data = information.pi.current_symbol_table.borrow().get_symbol_data(name, sd).expect("failed to find symbol in symbol table which was asked for");
                 let chunk = match sym_data {
                     SymbolData::Type { ty: _ } => panic!("type where variable expected"),
+                    // TODO: this isn't right. we need to track globals when compiling a CU :vomits:
                     SymbolData::GlobalVariable { ty: _ } => build_chunk!(OpCode::DefineGlobal { offset: 0 }; st),
                     SymbolData::LocalVariable { ty: _, scope_level: _, slot } => build_chunk!(OpCode::DefineLocal { offset: slot }; st),
                 };
@@ -247,31 +249,37 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 block_chunk
             },
             Expression::LoopExpression { predicate, body, information: _ } => {
+                let body_chunk = self.visit_expression(body)?;
+                
+                
                 let enc_pred = if let Some(x) = predicate {
                     self.visit_expression(x)?
                 } else {
                     Chunk::new()
                 };
 
-                let body_chunk = self.visit_expression(body)?;
 
                 // TODO: this might not bypass the jump_to_beginning chunk...
                 // jump_to_beginning might be jump far or jump local. we need to know the size of the pred + body here
                 // which we do know.
-                let jump_to_end_chunk = if body_chunk.instruction_size() > 127 {
-                    build_chunk!(OpCode::JumpFarIfFalse { offset: -(body_chunk.instruction_size() as isize) })
-                } else {
-                    build_chunk!(OpCode::JumpLocalIfFalse { offset: -(body_chunk.instruction_size() as i8) })
+                let jump_to_end_offset: usize = body_chunk.instruction_size() + enc_pred.instruction_size() + 5;
+                let jump_to_end_chunk = match predicate {
+                    Some(_) => build_conditional_jump(jump_to_end_offset, false),
+                    None => Chunk::new(),
                 };
+
 
 
                 let loop_head = enc_pred.merge_chunk(jump_to_end_chunk).merge_chunk(body_chunk);
 
-                let jump_to_beginning_chunk = if loop_head.instruction_size() > 127 {
-                    build_chunk!(OpCode::JumpFarIfFalse { offset: -(loop_head.instruction_size() as isize) })
-                } else {
-                    build_chunk!(OpCode::JumpLocalIfFalse { offset: -(loop_head.instruction_size() as i8) })
+                // removing jump optimization to ensure size is known
+                // size = 5
+                // -1 to account for fact that we are starting at n-1 offset technically
+                let jump_to_beginning_chunk: Chunk = match predicate {
+                    Some(_) => unconditional_far_jump(loop_head.instruction_size()-1, true),
+                    None => unconditional_far_jump(loop_head.instruction_size()-1, true),
                 };
+
 
                 
 
@@ -351,3 +359,59 @@ impl Display for ToByteCodeError {
 }
 
 impl Error for ToByteCodeError {}
+
+fn build_conditional_jump(jump_size: usize, negate_offset: bool) -> Chunk {
+    if jump_size > 127 {
+        conditional_far_jump(jump_size, negate_offset)
+    } else {
+        conditional_local_jump(jump_size, negate_offset)
+    }
+}
+
+fn conditional_local_jump(jump_size: usize, negate_offset: bool) -> Chunk {
+    let offset = i8::try_from(jump_size).expect("failed to convert to i8, offset?");
+    let offset = if negate_offset {
+        -offset
+    } else {
+        offset
+    };
+    build_chunk!(OpCode::JumpLocalIfFalse { offset })
+}
+
+fn conditional_far_jump(jump_size: usize, negate_offset: bool) -> Chunk {
+    let offset = isize::try_from(jump_size).expect("failed to convert to isize, offset too large");
+    let offset = if negate_offset {
+        -offset
+    } else {
+        offset
+    };
+    build_chunk!(OpCode::JumpFarIfFalse { offset })
+}
+
+fn build_unconditional_jump(jump_size: usize, negate_offset: bool) -> Chunk {
+    if jump_size > 127 {
+        unconditional_far_jump(jump_size, negate_offset)
+    } else {
+        unconditional_local_jump(jump_size, negate_offset)
+    }
+}
+
+fn unconditional_far_jump(jump_size: usize, negate_offset: bool) -> Chunk {
+    let offset = isize::try_from(jump_size).expect("failed to convert to isize, offset too large");
+    let offset = if negate_offset {
+        -offset
+    } else {
+        offset
+    };
+    build_chunk!(OpCode::JumpFar { offset })
+}
+
+fn unconditional_local_jump(jump_size: usize, negate_offset: bool) -> Chunk {
+    let offset = i8::try_from(jump_size).expect("failed to convert to i8, offset?");
+    let offset = if negate_offset {
+        -offset
+    } else {
+        offset
+    };
+    build_chunk!(OpCode::JumpLocal { offset })
+}
