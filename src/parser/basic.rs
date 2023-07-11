@@ -1,5 +1,5 @@
 use std::{iter::Peekable, rc::Rc, cell::RefCell};
-use log::{debug, error};
+use log::{debug, error, trace};
 
 use crate::{ast::{symbol::{SymbolTable, SymbolData, ExtSymbolTable, ExtFrameData, FrameData}, transformers::{typeck::TypeInformation}, Statement, Expression, AbstractTree}, bytecode::Symbol};
 use super::{Parser, ParseInfo, ParseError};
@@ -133,7 +133,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn declaration(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
-        debug!("read declaration");
+        trace!("read declaration");
         let stmt = if let Some(_var_tok) = self.match_token([TokenType::Let]) {
             self.var_declaration()
         } else {
@@ -152,7 +152,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn var_declaration(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
-        debug!("read var declaration");
+        trace!("read var declaration");
         let name = self.consume_if(|ty| ty.is_ident(), "Expected variable name")?;
 
         let mut init = None;
@@ -208,7 +208,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
-        debug!("read statement");
+        trace!("read statement");
         if let Some(_print_tok) = self.match_token([TokenType::Identifier(String::from("print"))]) {
             self.print_statement()
         } else {
@@ -217,21 +217,21 @@ impl<'a> BasicParser<'a> {
     }
 
     fn print_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
-        debug!("read print statement");
+        trace!("read print statement");
         let expression = self.expression()?;
         self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
         Ok(Statement::PrintStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
     }
 
     fn expression_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
-        debug!("read expression statement");
+        trace!("read expression statement");
         let expression = self.expression()?;
         self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
         Ok(Statement::ExpressionStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
     }
 
     fn expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("read expression");
+        trace!("read expression");
 
         if let Some(_if_tok) = self.match_token([TokenType::If]) {
             self.if_expression()
@@ -249,7 +249,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn block_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("read block");
+        trace!("read block");
         let mut decls = Vec::new();
         while self.match_token([TokenType::RightBrace, TokenType::Eof]).is_none() {
             let decl = self.declaration()?;
@@ -260,7 +260,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn if_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("if expression");
+        trace!("if expression");
 
         // consume the if expression
         self.consume(TokenType::LeftParen, "Expected '(' after if keyword")?;
@@ -284,7 +284,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn while_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("while expression");
+        trace!("while expression");
         // consume the while expression
         let predicate = if let Some(_left_paren) = self.match_token([TokenType::LeftParen]) {
             let predicate_expression = self.expression()?;
@@ -304,7 +304,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn assignment(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("read assignment");
+        trace!("read assignment");
         let lhs = self.equality()?;
 
         if let Some(eq) = self.match_token([TokenType::Equal]) {
@@ -327,7 +327,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn equality(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("read equality");
+        trace!("read equality");
         let mut lhs = self.comparison()?;
 
         while let Some(oper) = self.match_token([TokenType::BangEqual, TokenType::EqualEqual]) {
@@ -344,7 +344,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn comparison(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("read comparison");
+        trace!("read comparison");
         let mut lhs = self.term()?;
 
         while let Some(oper) = self.match_token([TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual]) {
@@ -361,7 +361,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn term(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("read term");
+        trace!("read term");
         let mut lhs = self.factor()?;
 
         while let Some(oper) = self.match_token([TokenType::Minus, TokenType::Plus]) {
@@ -378,7 +378,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn factor(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("read factor");
+        trace!("read factor");
         let mut lhs = self.unary()?;
 
         while let Some(oper) = self.match_token([TokenType::Star, TokenType::Slash]) {
@@ -395,7 +395,7 @@ impl<'a> BasicParser<'a> {
     }
 
     fn unary(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("read unary");
+        trace!("read unary");
         if let Some(oper) = self.match_token([TokenType::Bang, TokenType::Minus]) {
             self.unary().map(|rhs| Expression::Unary {
                 operator: oper,
@@ -408,9 +408,9 @@ impl<'a> BasicParser<'a> {
     }
 
     fn primary(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
-        debug!("read primary");
+        trace!("read primary");
         if self.match_token([TokenType::LeftParen]).is_some() {
-            debug!("read seq");
+            trace!("read seq");
             let mut seq_expressions = vec![];
             let mut inner = self.expression()?;
 
