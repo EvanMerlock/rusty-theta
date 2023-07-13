@@ -115,4 +115,13 @@ impl OpCode {
             OpCode::Noop => 0xFD,
         }
     }
+
+    pub fn relocate_constants(self, new_base: usize) -> OpCode {
+        match self {
+            OpCode::Constant { offset } => OpCode::Constant { offset: offset + new_base },
+            OpCode::DefineGlobal { offset } => OpCode::DefineGlobal { offset: offset + new_base },
+            OpCode::GetGlobal { offset } => OpCode::GetGlobal { offset: offset + new_base },
+            _ => self,
+        }
+    }
 }
