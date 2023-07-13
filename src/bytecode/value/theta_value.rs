@@ -1,6 +1,8 @@
 use std::rc::Rc;
 use std::ops::{Deref, Add};
 
+use crate::ast::transformers::typeck::TypeInformation;
+
 pub const CONSTANT_POOL_HEADER: [u8; 8] = [84, 104, 101, 67, 111, 110, 115, 116];
 
 pub const DOUBLE_MARKER: &[u8] = &[0xF, 0xF];
@@ -60,6 +62,19 @@ impl Deref for ThetaString {
 
 pub struct ThetaUserType {
 
+}
+
+#[derive(Debug, Clone)]
+pub struct ThetaFunction {
+    args: Vec<ThetaFuncArg>,
+    bitstream: Vec<u8>,
+    name: ThetaString,
+    return_ty: TypeInformation,
+}
+
+#[derive(Debug, Clone)]
+pub struct ThetaFuncArg {
+    ty: TypeInformation
 }
 
 #[derive(Debug, Clone)]
