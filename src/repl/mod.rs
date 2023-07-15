@@ -72,20 +72,22 @@ impl Repl {
                 self.tbl = sym.clone();
                 let type_check = type_cker.transform(ast)?;
                 let chunk = ToByteCode.transform(&type_check)?;
-                let chunks: Vec<Chunk> = vec![chunk];
                 {
                     let mut code = Box::new(Cursor::new(Vec::new()));
                     {
                         let mut assembler = BasicAssembler::new(&mut code);
             
-                        assembler.assemble(chunks)?;
+                        assembler.assemble_chunk(chunk)?;
                     }
-                    self.machine.disassemble(code.get_ref())?;
+                    self.machine.execute_code(code.get_ref())?;
                     //TODO: should not need to do this. linking/relative offsetting?
                     // most likely need to clear symbol table of non-top-level symbols after every run since functions + user def. types should keep their own sym tbl
                     // idents should be stored in const pool as necessary
                     // need to come up with cleaner way of cleaning up machine after individual REPL line runs
                     // some things need to stay resident and others do not.
+
+                    // RESOLVED: page in the bitstream as relevant.
+                    // remove constant pool from chunks
                     self.machine.clear_const_pool();
                 }
                 Ok(ReplStatus::ReplOk)

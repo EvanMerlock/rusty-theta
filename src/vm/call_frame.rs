@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
-use crate::bytecode::ThetaValue;
+use crate::bytecode::{ThetaValue, ThetaBitstream};
 
 #[derive(Debug)]
 pub struct ThetaStack {
@@ -12,8 +12,8 @@ pub struct ThetaStack {
 }
 
 impl ThetaStack {
-    pub fn new() -> ThetaStack {
-        ThetaStack { globals: HashMap::new(), frames: vec![ThetaCallFrame::new(vec![], 0)] }
+    pub fn new(root_bitstream: Rc<ThetaBitstream>) -> ThetaStack {
+        ThetaStack { globals: HashMap::new(), frames: vec![ThetaCallFrame::new(root_bitstream, vec![], 0)] }
     }
 
     pub fn curr_frame(&self) -> Option<&ThetaCallFrame> {
@@ -24,8 +24,8 @@ impl ThetaStack {
         self.frames.last_mut()
     }
 
-    pub fn push_frame(&mut self, params: Vec<ThetaValue>, locals_required: usize) {
-        self.frames.push(ThetaCallFrame::new(params, locals_required));
+    pub fn push_frame(&mut self, bitstream_ref: Rc<ThetaBitstream>, params: Vec<ThetaValue>, locals_required: usize) {
+        self.frames.push(ThetaCallFrame::new(bitstream_ref, params, locals_required));
     }
 
     pub fn pop_frame(&mut self) -> Option<ThetaCallFrame> {
@@ -37,10 +37,6 @@ impl ThetaStack {
             Some(frame) => frame.locals.resize(frame.locals.len() + size, None),
             None => todo!()
         }
-    }
-
-    pub fn clean_frame(&mut self) {
-        self.frames = vec![ThetaCallFrame::new(vec![], 0)]
     }
 
     pub fn push(&mut self, loc: ThetaValue) {
@@ -100,12 +96,6 @@ impl ThetaStack {
     }
 }
 
-impl Default for ThetaStack {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct ThetaCallFrame {
@@ -116,10 +106,11 @@ pub struct ThetaCallFrame {
     rip: usize,
     // locals are uninitalized when created. we might need to make this an option and panic on fail
     locals: Vec<Option<ThetaValue>>,
+    bitstream: Rc<ThetaBitstream>,
 }
 
 impl ThetaCallFrame {
-    pub fn new(params: Vec<ThetaValue>, locals_required: usize) -> ThetaCallFrame {
-        ThetaCallFrame { params, rip: 0, locals: Vec::with_capacity(locals_required) }
+    pub fn new(bitstream_ref: Rc<ThetaBitstream>, params: Vec<ThetaValue>, locals_required: usize) -> ThetaCallFrame {
+        ThetaCallFrame { params, rip: 0, locals: Vec::with_capacity(locals_required), bitstream: bitstream_ref }
     }
 }

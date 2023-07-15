@@ -9,10 +9,15 @@ use std::error::Error;
 
 use crate::bytecode::{Chunk};
 
+use super::ThetaBitstream;
+use super::bitstream;
+
 pub trait Assembler {
     type Out;
 
-    fn assemble(&mut self, chunks: Vec<Chunk>) -> Self::Out;
+    fn assemble(&mut self, bitstream: ThetaBitstream) -> Self::Out;
+    fn assemble_bitstream(&mut self, bitstream: ThetaBitstream) -> Self::Out;
+    fn assemble_chunk(&mut self, chunk: Chunk) -> Self::Out;
 }
 
 #[derive(Debug)]
@@ -28,15 +33,7 @@ impl fmt::Display for AssembleError {
     }
 }
 
-impl Error for AssembleError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-
-    fn cause(&self) -> Option<&dyn Error> {
-        self.source()
-    }
-}
+impl Error for AssembleError {}
 
 impl From<std::io::Error> for AssembleError {
     fn from(err: std::io::Error) -> Self {

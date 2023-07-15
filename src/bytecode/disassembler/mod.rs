@@ -2,13 +2,21 @@ use core::{fmt};
 use std::{error::Error};
 
 mod string;
+mod basic;
 pub use self::string::*;
+pub use self::basic::*;
+
+use super::OpCode;
+use super::ThetaBitstream;
+use super::ThetaValue;
 
 pub trait Disassembler {
     type Out;
 
-    fn disassemble(&mut self, code: &dyn AsRef<[u8]>) -> Self::Out;
-    fn disassemble_chunk(&mut self, chunk: &[u8]) -> Self::Out;
+    fn disassemble(&mut self, code: &dyn AsRef<[u8]>) -> Result<Self::Out, DisassembleError>;
+    fn disassemble_bitstream(&mut self, bitstream: &[u8]) -> Result<ThetaBitstream, DisassembleError>;
+    fn disassemble_constant_pool(&mut self, constant_pool: &[u8]) -> Result<Vec<ThetaValue>, DisassembleError>;
+    fn disassemble_chunk(&mut self, chunk: &[u8]) -> Result<Vec<OpCode>, DisassembleError>;
 }
 
 #[derive(Debug)]

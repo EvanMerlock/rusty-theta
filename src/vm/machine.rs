@@ -2,7 +2,7 @@ use std::{rc::Rc, collections::HashMap};
 
 use log::{debug, error};
 
-use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER, ThetaString};
+use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER, ThetaString, ThetaBitstream, BITSTREAM_HEADER, BasicDisassembler};
 
 use super::call_frame::ThetaStack;
 
@@ -20,7 +20,7 @@ pub struct VM {
 impl VM {
     pub fn new() -> VM {
         VM {
-            stack: ThetaStack::new(),
+            stack: ThetaStack::new(Rc::new(ThetaBitstream::new())),
             strings: HashMap::new(),
             constants: Vec::new(),
             heap: Vec::new(),
@@ -51,10 +51,6 @@ impl VM {
         self.constants.clear()
     }
 
-    pub fn clean_stack(&mut self) {
-        self.stack.clean_frame()
-    }
-
     pub fn intern_string(&mut self, s_val: ThetaString) -> ThetaValue {
         let hv = match self.strings.get(&s_val) {
             Some(rc) => rc.clone(),
@@ -69,16 +65,8 @@ impl VM {
     }
 }
 
-impl Default for VM {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Disassembler for VM {
-    type Out = Result<(), DisassembleError>;
-
-    fn disassemble_chunk(&mut self, chunk: &[u8]) -> Result<(), DisassembleError> {
+impl VM {
+    pub fn execute_code(&mut self, chunk: &[u8]) -> Result<(), DisassembleError> {
         let mut offset: usize = 18;
 
         debug!("chunk: {:X?}", chunk);
@@ -88,68 +76,10 @@ impl Disassembler for VM {
         
         debug!("=== BEGIN CHUNK ===");
 
-        // assert constant pool header
-        assert!(chunk[8..16] == CONSTANT_POOL_HEADER);
+        let mut basic = BasicDisassembler::new();
 
-        debug!("-- BEGIN CONSTANT POOL --");
-
-        // read const pool size
-        let const_pool_size = chunk[17];
-        // TODO: constant pool should not be loaded into the VM.
-        // Instead, only global variables should be loaded into the global scope.
-        // Constants being loaded into the VM would require relocation upon load time
-        // However, it may be possible to do this for string interning.
-        // https://stackoverflow.com/questions/10578984/what-is-java-string-interning
-        // We should still store the string in the constant pool, but if the string literal exists in the heap already
-        // We should reference that instead; live bytecode patching could be a possibility, rather than using the same
-        // OP_CONSTANT bytecode fragment
-        for _ in 0..const_pool_size {
-            let marker = &chunk[offset..offset+2];
-            debug!("marker: {:?}", marker);
-            match marker {
-                sli if sli == DOUBLE_MARKER => {
-                    offset += 2;
-                    let dbl: [u8; 8] = chunk[offset..offset+8].try_into()?;
-                    let float = f64::from_le_bytes(dbl);
-                    debug!("float found in constant pool: {}", float);
-                    self.constants.push(ThetaValue::Double(float));              
-                    offset += 8;
-                },
-                sli if sli == INT_MARKER => {
-                    offset += 2;
-                    let dbl: [u8; 8] = chunk[offset..offset+8].try_into()?;
-                    let int = i64::from_le_bytes(dbl);
-                    debug!("i64 found in constant pool: {}", int);
-                    self.constants.push(ThetaValue::Int(int));              
-                    offset += 8;
-                },
-                sli if sli == BOOL_MARKER => {
-                    offset += 2;
-                    let bol: [u8; 1] = chunk[offset..offset+1].try_into()?;
-                    let bol = bol == [1u8];
-                    debug!("bool found in constant pool: {}", bol);
-                    self.constants.push(ThetaValue::Bool(bol));              
-                    offset += 1;
-                },
-                sli if sli == STRING_MARKER => {
-                    offset += 2;
-                    let len_bytes: [u8; 8] = chunk[offset..offset+8].try_into()?;
-                    let len = usize::from_le_bytes(len_bytes);
-                    offset += 8;
-                    let in_str = &chunk[offset..offset+len];
-                    let mut bytes = Vec::new();
-                    bytes.extend_from_slice(in_str);
-                    let read_str = String::from_utf8(bytes)?;
-                    debug!("str found in constant pool: {}", read_str);
-                    debug!("checking for memoized string");
-                    let s_val = ThetaString::new(read_str);
-                    let tv = self.intern_string(s_val);
-                    offset += len;
-                    self.constants.push(tv);
-                }
-                _ => return Err(DisassembleError::InvalidMarkerInChunk(marker.to_vec())),
-            }
-        }
+        let constants = basic.disassemble_constant_pool(&chunk[8..])?;
+        self.constants = constants;
 
         debug!("-- BEGIN INSTRUCTIONS --");
         
@@ -432,11 +362,10 @@ impl Disassembler for VM {
 
         Ok(())
     }
+}
 
-    fn disassemble(&mut self, input: &dyn AsRef<[u8]>) -> Result<(), DisassembleError> {
-        // TOOD: this only handles 1 chunk as that's all we're passing it right now.
-        self.disassemble_chunk(input.as_ref())?;
-
-        Ok(())
+impl Default for VM {
+    fn default() -> Self {
+        Self::new()
     }
 }

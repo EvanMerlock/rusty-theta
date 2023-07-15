@@ -60,7 +60,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let type_check = type_cker.transform(ast)?;
     let chunk = ToByteCode.transform(&type_check)?;
     debug!("chunk: {:?}", chunk);
-    let chunks: Vec<Chunk> = vec![chunk];
 
     {
         let mut assembler: Box<dyn Assembler<Out = Result<(), AssembleError>>> =
@@ -68,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 AssemblerImpl::Basic => Box::new(BasicAssembler::new(&mut out_file)),
                 AssemblerImpl::String => Box::new(PlainTextAssembler::new(&mut out_file)),
             };
-        assembler.assemble(chunks)?;
+        assembler.assemble_chunk(chunk)?;
     }
 
     out_file.flush()?;

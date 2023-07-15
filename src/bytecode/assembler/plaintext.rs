@@ -1,6 +1,6 @@
-use crate::bytecode::{Chunk, OpCode};
+use crate::bytecode::{Chunk, OpCode, ThetaBitstream};
 
-use super::{Assembler, AssembleError};
+use super::{AssembleError, Assembler};
 
 pub struct PlainTextAssembler<'a> {
     output_file: &'a mut Box<dyn std::io::Write>,
@@ -8,8 +8,8 @@ pub struct PlainTextAssembler<'a> {
 
 impl<'a> PlainTextAssembler<'a> {
     pub fn new(file_out: &'a mut Box<dyn std::io::Write>) -> PlainTextAssembler {
-        PlainTextAssembler { 
-            output_file: file_out
+        PlainTextAssembler {
+            output_file: file_out,
         }
     }
 }
@@ -17,37 +17,60 @@ impl<'a> PlainTextAssembler<'a> {
 impl<'a> Assembler for PlainTextAssembler<'a> {
     type Out = Result<(), AssembleError>;
 
-    fn assemble(&mut self, chunks: Vec<Chunk>) -> Result<(), AssembleError> {
-        for chunk in chunks {
-            writeln!(self.output_file, "=== CHUNK BEGIN ===")?;
-            writeln!(self.output_file, "-- CONSTANT POOL --")?;
-            let constants = chunk.constants();
+    fn assemble(&mut self, bitstream: ThetaBitstream) -> Result<(), AssembleError> {
+        todo!()
+    }
 
-            for constant in constants {
-                writeln!(self.output_file, "Constant: {:?}", constant)?;
-            }
+    fn assemble_bitstream(&mut self, bitstream: ThetaBitstream) -> Self::Out {
+        todo!()
+    }
 
-            writeln!(self.output_file, "-- INSTRUCTIONS --")?;
+    fn assemble_chunk(&mut self, chunk: Chunk) -> Self::Out {
+        writeln!(self.output_file, "=== CHUNK BEGIN ===")?;
+        writeln!(self.output_file, "-- CONSTANT POOL --")?;
+        let constants = chunk.constants();
 
-            let mut code_offset: usize = 0;
-            let instructions_in_chunk = chunk.instructions();
-            for opcode in instructions_in_chunk {
-                write!(self.output_file, "{code_offset:#X} | Op: {} ({:#X})", opcode.human_readable(), opcode.as_hexcode())?;
-
-                match opcode {
-                    OpCode::JumpFar { offset } => write!(self.output_file, " -> {:#X}", code_offset as isize + offset)?,
-                    OpCode::JumpLocal { offset } => write!(self.output_file, " -> {:#X}", code_offset as isize + *offset as isize)?,
-                    OpCode::JumpFarIfFalse { offset } => write!(self.output_file, " -> {:#X}", code_offset as isize + offset)?,
-                    OpCode::JumpLocalIfFalse { offset } => write!(self.output_file, " -> {:#X}", code_offset as isize + *offset as isize)?,
-                    _ => {},
-                }
-
-                writeln!(self.output_file)?;
-
-                code_offset += opcode.size();
-            }
-            writeln!(self.output_file, "=== CHUNK END @ {code_offset:#X} ===")?;
+        for constant in constants {
+            writeln!(self.output_file, "Constant: {:?}", constant)?;
         }
+
+        writeln!(self.output_file, "-- INSTRUCTIONS --")?;
+
+        let mut code_offset: usize = 0;
+        let instructions_in_chunk = chunk.instructions();
+        for opcode in instructions_in_chunk {
+            write!(
+                self.output_file,
+                "{code_offset:#X} | Op: {} ({:#X})",
+                opcode.human_readable(),
+                opcode.as_hexcode()
+            )?;
+
+            match opcode {
+                OpCode::JumpFar { offset } => {
+                    write!(self.output_file, " -> {:#X}", code_offset as isize + offset)?
+                }
+                OpCode::JumpLocal { offset } => write!(
+                    self.output_file,
+                    " -> {:#X}",
+                    code_offset as isize + *offset as isize
+                )?,
+                OpCode::JumpFarIfFalse { offset } => {
+                    write!(self.output_file, " -> {:#X}", code_offset as isize + offset)?
+                }
+                OpCode::JumpLocalIfFalse { offset } => write!(
+                    self.output_file,
+                    " -> {:#X}",
+                    code_offset as isize + *offset as isize
+                )?,
+                _ => {}
+            }
+
+            writeln!(self.output_file)?;
+
+            code_offset += opcode.size();
+        }
+        writeln!(self.output_file, "=== CHUNK END @ {code_offset:#X} ===")?;
         Ok(())
     }
 }
