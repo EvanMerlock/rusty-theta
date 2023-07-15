@@ -76,7 +76,9 @@ impl VM {
         
         debug!("=== BEGIN CHUNK ===");
 
-        let mut basic = BasicDisassembler::new();
+        let mut basic = BasicDisassembler::new(&|tv| {
+            self.intern_string(tv)
+        });
 
         let constants = basic.disassemble_constant_pool(&chunk[8..])?;
         self.constants = constants;

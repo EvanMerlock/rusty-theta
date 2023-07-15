@@ -4,16 +4,19 @@ use crate::bytecode::{BITSTREAM_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, The
 
 use super::{Disassembler, DisassembleError};
 
-pub struct BasicDisassembler {
+pub struct BasicDisassembler<'a, F> where F: FnMut(ThetaString) -> ThetaValue {
+    interning_fn: &'a F
 }
 
-impl BasicDisassembler  {
-    pub fn new() -> BasicDisassembler {
-        BasicDisassembler {}
+impl<'a, F> BasicDisassembler<'a, F> where F: FnMut(ThetaString) -> ThetaValue {
+    pub fn new(interning_fn: &'a F) -> BasicDisassembler<'a, F> {
+        BasicDisassembler {
+            interning_fn
+        }
     }
 }
 
-impl Disassembler for BasicDisassembler  {
+impl<'a, F> Disassembler for BasicDisassembler<'a, F> where F: FnMut(ThetaString) -> ThetaValue {
     type Out = ThetaBitstream;
 
     fn disassemble_chunk(&mut self, chunk: &[u8]) -> Result<Vec<OpCode>, DisassembleError> {
@@ -97,7 +100,7 @@ impl Disassembler for BasicDisassembler  {
                     debug!("str found in constant pool: {}", read_str);
                     debug!("checking for memoized string");
                     let s_val = ThetaString::new(read_str);
-                    let tv = (self.interning_func)(s_val);
+                    let tv = (self.interning_fn)(s_val);
                     offset += len;
                     self.constants.push(tv);
                 }
