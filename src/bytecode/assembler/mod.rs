@@ -10,6 +10,8 @@ use std::error::Error;
 use crate::bytecode::{Chunk};
 
 use super::ThetaBitstream;
+use super::ThetaConstant;
+use super::ThetaFunction;
 use super::bitstream;
 
 pub trait Assembler {
@@ -17,6 +19,8 @@ pub trait Assembler {
 
     fn assemble(&mut self, bitstream: ThetaBitstream) -> Self::Out;
     fn assemble_bitstream(&mut self, bitstream: ThetaBitstream) -> Self::Out;
+    fn assemble_constant_pool(&mut self, constant_pool: Vec<ThetaConstant>) -> Self::Out;
+    fn assemble_function_pool(&mut self, function_pool: Vec<ThetaFunction>) -> Self::Out;
     fn assemble_chunk(&mut self, chunk: Chunk) -> Self::Out;
 }
 

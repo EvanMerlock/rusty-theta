@@ -73,4 +73,12 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
         writeln!(self.output_file, "=== CHUNK END @ {code_offset:#X} ===")?;
         Ok(())
     }
+
+    fn assemble_constant_pool(&mut self, constant_pool: Vec<crate::bytecode::ThetaConstant>) -> Self::Out {
+        todo!()
+    }
+
+    fn assemble_function_pool(&mut self, function_pool: Vec<crate::bytecode::ThetaFunction>) -> Self::Out {
+        todo!()
+    }
 }

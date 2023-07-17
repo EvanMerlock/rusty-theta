@@ -2,8 +2,11 @@ use std::rc::Rc;
 use std::ops::{Deref, Add};
 
 use crate::ast::transformers::typeck::TypeInformation;
+use crate::bytecode::OpCode;
 
 pub const CONSTANT_POOL_HEADER: [u8; 8] = [84, 104, 101, 67, 111, 110, 115, 116];
+pub const FUNCTION_POOL_HEADER: [u8; 8] = [0xF4, 0x17, 0xC7, 0x10, 0x17, 0x90, 0x09, 0xF4];
+pub const FUNCTION_HEADER: [u8; 4] = [0x11, 0x22, 0x33, 0x44];
 
 pub const DOUBLE_MARKER: &[u8] = &[0xF, 0xF];
 pub const INT_MARKER: &[u8] = &[0xA, 0xA];
@@ -66,15 +69,21 @@ pub struct ThetaUserType {
 
 #[derive(Debug, Clone)]
 pub struct ThetaFunction {
-    args: Vec<ThetaFuncArg>,
-    bitstream: Vec<u8>,
-    name: ThetaString,
-    return_ty: TypeInformation,
+    pub args: Vec<ThetaFuncArg>,
+    pub chunk: Vec<u8>,
+    pub name: ThetaString,
+    pub return_ty: TypeInformation,
 }
 
 #[derive(Debug, Clone)]
 pub struct ThetaFuncArg {
     ty: TypeInformation
+}
+
+impl From<TypeInformation> for ThetaFuncArg {
+    fn from(value: TypeInformation) -> Self {
+        ThetaFuncArg { ty: value }
+    }
 }
 
 #[derive(Debug, Clone)]

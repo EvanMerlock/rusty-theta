@@ -1,27 +1,23 @@
+use log::debug;
+
 use crate::bytecode::{
-    BOOL_MARKER, CHUNK_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, STRING_MARKER, OpCode, ThetaBitstream, ThetaConstant, ThetaValue,
+    BOOL_MARKER, CHUNK_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, STRING_MARKER, OpCode, ThetaBitstream, ThetaConstant, ThetaValue, ThetaFileVisitor,
 };
 
 use super::{DisassembleError, Disassembler};
 
-pub struct StringDisassembler;
+pub struct StringDisassembler {
+    readout: String,
+}
 
 impl StringDisassembler {
     pub fn new() -> StringDisassembler {
-        StringDisassembler {}
+        StringDisassembler {
+            readout: String::new()
+        }
     }
-}
 
-impl Default for StringDisassembler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Disassembler for StringDisassembler {
-    type Out = String;
-
-    fn disassemble_chunk(&mut self, chunk: &[u8]) -> Result<Vec<OpCode>, DisassembleError> {
+    fn disassemble_chunk(&mut self, chunk: &[u8]) -> Result<(usize, String), DisassembleError> {
         let mut offset = 18;
         let mut readout = String::new();
 
@@ -31,11 +27,6 @@ impl Disassembler for StringDisassembler {
         assert!(chunk[0..8] == CHUNK_HEADER);
 
         readout.push_str("=== BEGIN CHUNK ===\r\n");
-
-        // assert constant pool header
-        assert!(chunk[8..16] == CONSTANT_POOL_HEADER);
-
-        readout.push_str("-- BEGIN CONSTANT POOL --\r\n");
 
         while offset < chunk.len() {
             // read into chunk
@@ -150,65 +141,52 @@ impl Disassembler for StringDisassembler {
             }
         }
 
-        Ok(readout)
+        Ok((0, readout))
     }
+}
+
+impl Default for StringDisassembler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Disassembler for StringDisassembler {
+    type Out = String;
 
     fn disassemble(&mut self, input: &dyn AsRef<[u8]>) -> Result<String, DisassembleError> {
         let mut readout = String::new();
 
         // TOOD: this only handles 1 chunk as that's all we're passing it right now.
-        let chunk_disassembly = self.disassemble_chunk(input.as_ref())?;
+        let (offset, chunk_disassembly) = self.disassemble_chunk(input.as_ref())?;
         readout.push_str(&chunk_disassembly);
 
         Ok(readout)
     }
 
-    fn disassemble_bitstream(&mut self, bitstream: &[u8]) -> Result<ThetaBitstream, DisassembleError> {
-        todo!()
+}
+
+impl ThetaFileVisitor for StringDisassembler {
+    fn visit_theta_file(&mut self) {
+        debug!("seen theta file")
     }
 
-    fn disassemble_constant_pool(&mut self, chunk: &[u8]) -> Result<Vec<ThetaValue>, DisassembleError> {
-        let offset = 0;
-        let const_pool_size = chunk[17];
-        for _ in 0..const_pool_size {
-            let marker = &chunk[offset..offset + 2];
-            println!("marker: {:?}", marker);
-            match marker {
-                sli if sli == DOUBLE_MARKER => {
-                    offset += 2;
-                    let dbl: [u8; 8] = chunk[offset..offset + 8].try_into()?;
-                    readout.push_str(&format!("Constant: {}\r\n", f64::from_le_bytes(dbl)));
-                    offset += 8;
-                }
-                sli if sli == INT_MARKER => {
-                    offset += 2;
-                    let dbl: [u8; 8] = chunk[offset..offset + 8].try_into()?;
-                    let int = i64::from_le_bytes(dbl);
-                    readout.push_str(&format!("Constant: {}\r\n", int));
-                    offset += 8;
-                }
-                sli if sli == BOOL_MARKER => {
-                    offset += 2;
-                    let bol: [u8; 1] = chunk[offset..offset + 1].try_into()?;
-                    let bol = bol == [1u8];
-                    readout.push_str(&format!("Constant: {}\r\n", bol));
-                    offset += 1;
-                }
-                sli if sli == STRING_MARKER => {
-                    offset += 2;
-                    let len_bytes: [u8; 8] = chunk[offset..offset + 8].try_into()?;
-                    let len = usize::from_le_bytes(len_bytes);
-                    offset += 8;
-                    let in_str = &chunk[offset..offset + len];
-                    let mut bytes = Vec::new();
-                    bytes.extend_from_slice(in_str);
-                    let read_str = String::from_utf8(bytes)?;
-                    offset += len;
-                    readout.push_str(&format!("Constant: {}\r\n", read_str));
-                }
-                _ => return Err(DisassembleError::InvalidMarkerInChunk(marker.to_owned())),
-            }
+    fn visit_theta_bitstream(&mut self) {
+        debug!("seen theta bitstream");
+        self.readout = String::new();
+    }
+
+    fn visit_theta_constant(&mut self, constant: ThetaConstant) {
+        debug!("seen theta constant");
+        match constant {
+            ThetaConstant::Double(dbl) => self.readout.push_str(&format!("Constant: {}\r\n", dbl)),
+            ThetaConstant::Int(int) => self.readout.push_str(&format!("Constant: {}\r\n", int)),
+            ThetaConstant::Bool(bln) => self.readout.push_str(&format!("Constant: {}\r\n", bln)),
+            ThetaConstant::Str(strin) => self.readout.push_str(&format!("Constant: {}\r\n", strin)),
         }
-        todo!()
+    }
+
+    fn visit_theta_function(&mut self, function: crate::bytecode::ThetaFunction) {
+        debug!("seen theta function")
     }
 }
