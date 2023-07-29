@@ -50,7 +50,7 @@ impl ThetaString {
 
 impl From<Symbol> for ThetaString {
     fn from(value: Symbol) -> Self {
-        ThetaString::new(value.to_string())
+        ThetaString::new(value.id().clone())
     }
 }
 

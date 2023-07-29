@@ -38,6 +38,9 @@ impl<'a> Assembler for BasicAssembler<'a> {
     fn assemble_chunk(&mut self, chunk: Chunk) -> Self::Out {
         self.output_file.write_all(&CHUNK_HEADER)?;
 
+        let chunk_size = chunk.instruction_size();
+        self.output_file.write_all(&usize::to_le_bytes(chunk_size))?;
+
         let instructions_in_chunk = chunk.instructions();
         for opcode in instructions_in_chunk {
             match opcode {
@@ -168,6 +171,8 @@ impl<'a> Assembler for BasicAssembler<'a> {
                 TypeInformation::None => self.output_file.write_all(&[0x0])?,
                 TypeInformation::Function(_, _) => todo!(),
             }
+
+            self.assemble_chunk(func.chunk)?;
         }
 
         Ok(())

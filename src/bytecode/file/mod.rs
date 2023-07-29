@@ -210,6 +210,9 @@ impl ThetaFileWalker {
         assert!(chunk[0..8] == CHUNK_HEADER);
         let mut offset = 8;
         let chunk_size: usize = usize::from_le_bytes(chunk[offset..offset+8].try_into().expect("could not get chunk size"));
+        offset += 7;
+
+        debug!("chunk size: {chunk_size}");
 
         Ok((offset, chunk[offset..offset+chunk_size].to_vec()))
     }

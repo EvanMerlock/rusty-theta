@@ -91,6 +91,12 @@ impl VM {
         
         debug!("=== BEGIN CHUNK ===");
 
+        let chunk_size: usize = usize::from_le_bytes(chunk[offset..offset+8].try_into().expect("could not get chunk size"));
+        debug!("chunk size: {chunk_size}");
+
+        offset += 8;
+
+
         debug!("-- BEGIN INSTRUCTIONS --");
 
         while offset < chunk.len() {

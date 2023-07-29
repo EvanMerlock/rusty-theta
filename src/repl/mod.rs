@@ -89,17 +89,18 @@ impl Repl {
                 let mut intern_fn = |x| self.machine.intern_string(x);
                 let mut basic_diassembler = BasicDisassembler::new(&mut intern_fn);
                 let comp_bs = basic_diassembler.disassemble(&compiled_bitstream)?;
-                let loaded_bs = self.machine.load_bitstream(comp_bs);
+                self.machine.load_bitstream(comp_bs);
                 
-                // compile chunk
 
-                let mut compiled_chunk = Vec::new();
-                let mut basic_assembler = BasicAssembler::new(&mut compiled_chunk);
-                basic_assembler.assemble_chunk(chunk)?;
-
-                // execute chunk
-
-                self.machine.execute_code(&compiled_chunk)?;
+                if !chunk.instructions().is_empty() {
+                    // compile chunk
+                    let mut compiled_chunk = Vec::new();
+                    let mut basic_assembler = BasicAssembler::new(&mut compiled_chunk);
+                    basic_assembler.assemble_chunk(chunk)?;
+    
+                    // execute chunk
+                    self.machine.execute_code(&compiled_chunk)?;
+                }
 
                 Ok(ReplStatus::ReplOk)
     }
@@ -126,7 +127,7 @@ impl Repl {
             ReplItem::Declaration(decl) => {
                 let sym = decl.information().current_symbol_table.clone();
                 debug!("sym: {:?}", sym.borrow());
-                let type_cker = TypeCk::new(sym.clone());
+                let type_cker = TypeCk::new(sym);
                 let type_check = type_cker.transform_tree(&decl)?;
                 let ty_chunk = ToByteCode.transform_tree(&type_check)?;
 
