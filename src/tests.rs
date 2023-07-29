@@ -33,6 +33,9 @@ macro_rules! statement {
     (Expr: $stmt:expr) => {
         Statement::ExpressionStatement { expression: $stmt, information: () }
     };
+    (Print: $stmt:expr) => {
+        Statement::PrintStatement { expression: $stmt, information: () }
+    }
 }
 
 #[macro_export]

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::bytecode::{ThetaValue, ThetaBitstream};
+use crate::bytecode::{ThetaValue, ThetaBitstream, ThetaCompiledBitstream};
 
 #[derive(Debug)]
 pub struct ThetaStack {
@@ -12,7 +12,7 @@ pub struct ThetaStack {
 }
 
 impl ThetaStack {
-    pub fn new(root_bitstream: Rc<ThetaBitstream>) -> ThetaStack {
+    pub fn new(root_bitstream: Rc<ThetaCompiledBitstream>) -> ThetaStack {
         ThetaStack { globals: HashMap::new(), frames: vec![ThetaCallFrame::new(root_bitstream, vec![], 0)] }
     }
 
@@ -24,7 +24,7 @@ impl ThetaStack {
         self.frames.last_mut()
     }
 
-    pub fn push_frame(&mut self, bitstream_ref: Rc<ThetaBitstream>, params: Vec<ThetaValue>, locals_required: usize) {
+    pub fn push_frame(&mut self, bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<ThetaValue>, locals_required: usize) {
         self.frames.push(ThetaCallFrame::new(bitstream_ref, params, locals_required));
     }
 
@@ -94,6 +94,10 @@ impl ThetaStack {
     fn flatten_refstackval(val: Option<&Option<ThetaValue>>) -> Option<&ThetaValue> {
         val.unwrap_or(&None).as_ref()
     }
+
+    pub fn set_bitstream(&mut self, bitstream_ref: Rc<ThetaCompiledBitstream>) {
+        self.frames.last_mut().expect("no stack frame").bitstream = bitstream_ref;
+    }
 }
 
 #[derive(Debug)]
@@ -106,11 +110,11 @@ pub struct ThetaCallFrame {
     rip: usize,
     // locals are uninitalized when created. we might need to make this an option and panic on fail
     locals: Vec<Option<ThetaValue>>,
-    bitstream: Rc<ThetaBitstream>,
+    pub bitstream: Rc<ThetaCompiledBitstream>,
 }
 
 impl ThetaCallFrame {
-    pub fn new(bitstream_ref: Rc<ThetaBitstream>, params: Vec<ThetaValue>, locals_required: usize) -> ThetaCallFrame {
+    pub fn new(bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<ThetaValue>, locals_required: usize) -> ThetaCallFrame {
         ThetaCallFrame { params, rip: 0, locals: Vec::with_capacity(locals_required), bitstream: bitstream_ref }
     }
 }

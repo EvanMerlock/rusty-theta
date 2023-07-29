@@ -2,7 +2,7 @@ use std::{fmt, error::Error};
 
 use log::debug;
 
-use crate::{bytecode::{BITSTREAM_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, ThetaValue, INT_MARKER, BOOL_MARKER, STRING_MARKER, OpCode, ThetaBitstream, ThetaString, ThetaHeapValue, FUNCTION_POOL_HEADER, FUNCTION_HEADER, ThetaFunction, ThetaFuncArg, CHUNK_HEADER}, ast::transformers::typeck::TypeInformation};
+use crate::{bytecode::{BITSTREAM_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, ThetaValue, INT_MARKER, BOOL_MARKER, STRING_MARKER, OpCode, ThetaBitstream, ThetaString, ThetaHeapValue, FUNCTION_POOL_HEADER, FUNCTION_HEADER, ThetaCompiledFunction, ThetaFuncArg, CHUNK_HEADER}, ast::transformers::typeck::TypeInformation};
 
 use super::ThetaConstant;
 
@@ -10,7 +10,7 @@ pub trait ThetaFileVisitor {
     fn visit_theta_file(&mut self);
     fn visit_theta_bitstream(&mut self);
     fn visit_theta_constant(&mut self, constant: ThetaConstant);
-    fn visit_theta_function(&mut self, function: ThetaFunction);
+    fn visit_theta_function(&mut self, function: ThetaCompiledFunction);
 }
 
 pub struct ThetaFileWalker {}
@@ -55,7 +55,7 @@ impl From<std::string::FromUtf8Error> for FileVisitError {
 }
 
 impl ThetaFileWalker {
-    fn walk_theta_file(&mut self, visitor: &mut dyn ThetaFileVisitor, input: &dyn AsRef<[u8]>) -> Result<(), FileVisitError> {
+    pub fn walk_theta_file(&mut self, visitor: &mut dyn ThetaFileVisitor, input: &dyn AsRef<[u8]>) -> Result<(), FileVisitError> {
         visitor.visit_theta_file();
         self.walk_bitstream(visitor, input.as_ref())?;
         Ok(())
@@ -69,7 +69,7 @@ impl ThetaFileWalker {
 
         // first segment of the bitstream is the constant pool
         let fn_offset = self.walk_constant_pool(visitor, &bitstream[8..])?;
-        let after_offset = self.walk_function_pool(visitor, &bitstream[fn_offset..])?;
+        let after_offset = self.walk_function_pool(visitor, &bitstream[8+fn_offset..])?;
 
         Ok(())
     }
@@ -81,6 +81,8 @@ impl ThetaFileWalker {
         debug!("-- BEGIN CONSTANT POOL --");
 
         // read const pool size
+        // u16 on disk, only looking at byte 9
+        // TODO: all sizes on disk should be usize.
         let const_pool_size = constant_pool[9];
         let mut offset = 10;
 
@@ -136,8 +138,8 @@ impl ThetaFileWalker {
         assert!(function_pool[0..8] == FUNCTION_POOL_HEADER);
 
         debug!("-- BEGIN FUNCTION POOL --");
-        let func_pool_size = function_pool[9];
-        let mut offset = 10;
+        let func_pool_size = function_pool[8];
+        let mut offset = 9;
 
         for _ in 0..func_pool_size {
             debug!("Fn found");
@@ -164,6 +166,7 @@ impl ThetaFileWalker {
             let mut fn_args = vec![];
             for _ in 0..fn_arity {
                 match function_pool[offset] {
+                    0x0 => fn_args.push(ThetaFuncArg::from(TypeInformation::None)),
                     0x1 => fn_args.push(ThetaFuncArg::from(TypeInformation::Boolean)),
                     0x2 => fn_args.push(ThetaFuncArg::from(TypeInformation::Int)),
                     0x3 => fn_args.push(ThetaFuncArg::from(TypeInformation::Float)),
@@ -175,6 +178,7 @@ impl ThetaFileWalker {
 
             debug!("reading fn return type");
             let fn_return_ty = match function_pool[offset] {
+                0x0 => TypeInformation::None,
                 0x1 => TypeInformation::Boolean,
                 0x2 => TypeInformation::Int,
                 0x3 => TypeInformation::Float,
@@ -186,7 +190,7 @@ impl ThetaFileWalker {
             debug!("reading fn bitstream");
             let (new_off, chunk_code) = self.walk_chunk(&function_pool[offset..])?;
 
-            visitor.visit_theta_function(ThetaFunction {
+            visitor.visit_theta_function(ThetaCompiledFunction {
                 args: fn_args,
                 chunk: chunk_code,
                 name: ThetaString::new(fn_name),

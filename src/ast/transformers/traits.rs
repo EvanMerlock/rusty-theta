@@ -1,14 +1,16 @@
 use std::{fmt::{self, Debug}, error::Error};
 
-use crate::ast::{AbstractTree, Expression, Statement};
+use crate::{ast::{AbstractTree, Expression, Statement, Function, tree::Item}, bytecode::ThetaFunction};
 
 use super::{typeck::TypeCkError, to_bytecode::ToByteCodeError};
 
 pub trait ASTTransformer<T> where T: Debug + PartialEq {
 
-    type Out;
+    type ItemOut;
+    type TreeOut;
 
-    fn transform(&self, tree: &AbstractTree<T>) -> Result<Self::Out, TransformError>;
+    fn transform_item(&self, item: &Item<T>) -> Result<Self::ItemOut, TransformError>;
+    fn transform_tree(&self, tree: &AbstractTree<T>) -> Result<Self::TreeOut, TransformError>;
 
 }
 
@@ -16,16 +18,18 @@ pub trait ASTVisitor<T> where T: Debug + PartialEq {
 
     type InfoOut: Debug + PartialEq;
 
+    fn visit_function(&self, func: &Function<T>) -> Result<Function<Self::InfoOut>, TransformError>;
     fn visit_expression(&self, expr: &Expression<T>) -> Result<Expression<Self::InfoOut>, TransformError>;
     fn visit_statement(&self, stmt: &Statement<T>) -> Result<Statement<Self::InfoOut>, TransformError>;
 }
 
 pub trait ASTTerminator<T> where T: Debug + PartialEq {
 
-    type Out;
+    type ChunkOut;
 
-    fn visit_expression(&self, expr: &Expression<T>) -> Result<Self::Out, TransformError>;
-    fn visit_statement(&self, stmt: &Statement<T>) -> Result<Self::Out, TransformError>;
+    fn visit_function(&self, func: &Function<T>) -> Result<ThetaFunction, TransformError>;
+    fn visit_expression(&self, expr: &Expression<T>) -> Result<Self::ChunkOut, TransformError>;
+    fn visit_statement(&self, stmt: &Statement<T>) -> Result<Self::ChunkOut, TransformError>;
 
 
 }

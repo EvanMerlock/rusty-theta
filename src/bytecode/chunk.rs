@@ -2,7 +2,7 @@ use super::{OpCode, ThetaConstant};
 
 pub const CHUNK_HEADER: [u8; 8] = [84, 104, 101, 67, 104, 117, 110, 107];
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Chunk {
     instructions: Vec<OpCode>,
     constants: Vec<ThetaConstant>,
@@ -38,6 +38,12 @@ impl Chunk {
 
     pub fn constants(&self) -> &Vec<ThetaConstant> {
         &self.constants
+    }
+
+    pub fn relocate(self, offset: usize) -> Chunk {
+        let inst = self.instructions.into_iter().map(|x| x.relocate_constants(offset)).collect();
+
+        Chunk { instructions: inst, constants: self.constants }
     }
 
     pub fn merge_chunk(self, other: Chunk) -> Chunk {

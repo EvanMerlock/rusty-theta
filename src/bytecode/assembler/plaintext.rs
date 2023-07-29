@@ -1,4 +1,4 @@
-use crate::bytecode::{Chunk, OpCode, ThetaBitstream};
+use crate::bytecode::{Chunk, OpCode, ThetaBitstream, ThetaFunction, ThetaConstant};
 
 use super::{AssembleError, Assembler};
 
@@ -27,12 +27,7 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
 
     fn assemble_chunk(&mut self, chunk: Chunk) -> Self::Out {
         writeln!(self.output_file, "=== CHUNK BEGIN ===")?;
-        writeln!(self.output_file, "-- CONSTANT POOL --")?;
-        let constants = chunk.constants();
 
-        for constant in constants {
-            writeln!(self.output_file, "Constant: {:?}", constant)?;
-        }
 
         writeln!(self.output_file, "-- INSTRUCTIONS --")?;
 
@@ -74,11 +69,17 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
         Ok(())
     }
 
-    fn assemble_constant_pool(&mut self, constant_pool: Vec<crate::bytecode::ThetaConstant>) -> Self::Out {
-        todo!()
+    fn assemble_constant_pool(&mut self, constant_pool: Vec<ThetaConstant>) -> Self::Out {
+        writeln!(self.output_file, "-- CONSTANT POOL --")?;
+
+        for constant in constant_pool {
+            writeln!(self.output_file, "Constant: {:?}", constant)?;
+        }
+
+        Ok(())
     }
 
-    fn assemble_function_pool(&mut self, function_pool: Vec<crate::bytecode::ThetaFunction>) -> Self::Out {
+    fn assemble_function_pool(&mut self, function_pool: Vec<ThetaFunction>) -> Self::Out {
         todo!()
     }
 }

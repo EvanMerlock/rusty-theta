@@ -2,19 +2,21 @@ use std::error::Error;
 use std::fmt::Display;
 
 use crate::ast::symbol::SymbolData;
-use crate::ast::{Expression, Statement, AbstractTree, InnerAbstractTree};
-use crate::bytecode::{Chunk, OpCode, ThetaConstant, Symbol};
+use crate::ast::{Expression, Statement, AbstractTree, InnerAbstractTree, Item, Function};
+use crate::bytecode::{Chunk, OpCode, ThetaConstant, Symbol, ThetaFunction, ThetaFuncArg, ThetaString};
 use crate::{build_chunk, lexer::token};
 
-use super::typeck::TypeCkOutput;
+use super::typeck::{TypeCkOutput};
 use super::{ASTTerminator, ASTTransformer, TransformError};
 
 pub struct ToByteCode;
 
 impl ASTTransformer<TypeCkOutput> for ToByteCode {
-    type Out = Chunk;
 
-    fn transform(
+    type ItemOut = ThetaFunction;
+    type TreeOut = Chunk;
+
+    fn transform_tree(
         &self,
         tree: &AbstractTree<TypeCkOutput>,
     ) -> Result<Chunk, super::TransformError> {
@@ -42,15 +44,23 @@ impl ASTTransformer<TypeCkOutput> for ToByteCode {
         }
         Ok(block_chunk.merge_chunk(pop_block))
     }
+
+    fn transform_item(&self, item: &Item<TypeCkOutput>) -> Result<Self::ItemOut, TransformError> {
+        match item {
+            Item::Function(func) => {
+                todo!()
+            },
+        }
+    }
 }
 
 impl ASTTerminator<TypeCkOutput> for ToByteCode {
-    type Out = Chunk;
+    type ChunkOut = Chunk;
 
     fn visit_expression(
         &self,
         expr: &Expression<TypeCkOutput>,
-    ) -> Result<Self::Out, TransformError> {
+    ) -> Result<Self::ChunkOut, TransformError> {
         Ok(match expr {
             Expression::Binary {
                 left,
@@ -291,7 +301,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
     fn visit_statement(
         &self,
         stmt: &Statement<TypeCkOutput>,
-    ) -> Result<Self::Out, super::TransformError> {
+    ) -> Result<Self::ChunkOut, super::TransformError> {
         match stmt {
             Statement::ExpressionStatement { expression, information: _ } => {
                 let expr_chunk = self.visit_expression(expression)?;
@@ -338,6 +348,21 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 }
             },
         }
+    }
+
+    fn visit_function(&self, func: &Function<TypeCkOutput>) -> Result<ThetaFunction, TransformError> {
+
+        let internal_ck = self.transform_tree(&func.chunk)?;
+
+        let internal_args = func.args.iter().map(|x| ThetaFuncArg { ty: x.ty.clone() }).collect();
+
+
+        Ok(ThetaFunction {
+            args: internal_args,
+            chunk: internal_ck,
+            name: ThetaString::from(func.name.clone()),
+            return_ty: func.return_ty.clone(),
+        })
     }
 }
 

@@ -3,7 +3,7 @@ use std::{error::Error, fmt::Display};
 use log::{debug, error, trace};
 
 use super::{ASTTransformer, ASTVisitor, TransformError};
-use crate::{ast::{symbol::{ExtSymbolTable, SymbolData}, AbstractTree, InnerAbstractTree, Expression, Statement}, lexer::token::{TokenType, Token}, parser::{ParseInfo}, bytecode::Symbol};
+use crate::{ast::{symbol::{ExtSymbolTable, SymbolData}, AbstractTree, InnerAbstractTree, Expression, Statement, tree::Function, Item}, lexer::token::{TokenType, Token}, parser::{ParseInfo}, bytecode::Symbol};
 
 pub struct TypeCk {
     symbol_table: ExtSymbolTable
@@ -27,6 +27,7 @@ pub enum TypeCkError {
     InvalidIfExpressionCheck(TypeInformation),
     InvalidIfBranches(TypeInformation, TypeInformation),
     InvalidPredicate(TypeInformation),
+    InvalidFunctionReturn(TypeInformation, TypeInformation)
 }
 
 impl Error for TypeCkError {
@@ -52,6 +53,7 @@ impl Display for TypeCkError {
             TypeCkError::InvalidIfExpressionCheck(ty) => write!(f, "Type Mismatch! Expected boolean, instead an if expression produced: {}", ty),
             TypeCkError::InvalidIfBranches(ty_l, ty_r) => write!(f, "Type Mismatch! Primary If Body: {}, Else Body: {}", ty_l, ty_r),
             TypeCkError::InvalidPredicate(ty) => write!(f, "Type Mismatch! Expected boolean, got: {ty}"),
+            TypeCkError::InvalidFunctionReturn(expected, actual) => write!(f, "Type Mismatch! Expected a function returning {}, got: {}", expected, actual),
         }
     }
 }
@@ -87,9 +89,10 @@ impl Display for TypeInformation {
 
 impl ASTTransformer<ParseInfo> for TypeCk {
 
-    type Out = AbstractTree<TypeCkOutput>;
+    type ItemOut = Item<TypeCkOutput>;
+    type TreeOut = AbstractTree<TypeCkOutput>;
 
-    fn transform(&self, tree: &AbstractTree<ParseInfo>) -> Result<Self::Out, super::TransformError> {
+    fn transform_tree(&self, tree: &AbstractTree<ParseInfo>) -> Result<Self::TreeOut, super::TransformError> {
         trace!("Symbol Table: {:#?}", self.symbol_table);
         match tree.inner() {
             InnerAbstractTree::Expression(expr) => { 
@@ -115,6 +118,23 @@ impl ASTTransformer<ParseInfo> for TypeCk {
                 let info = ty_aug.information().clone();
                 debug!("Completed TypeCk on Stmt w/ Type: {:?}", info);
                 Ok(AbstractTree::statement(ty_aug, info))
+            },
+        }
+    }
+
+    fn transform_item(&self, item: &Item<ParseInfo>) -> Result<Self::ItemOut, TransformError> {
+        match item {
+            Item::Function(func) => {
+                let ty_aug = match self.visit_function(func) {
+                    Ok(ty) => ty,
+                    Err(e) => {
+                        error!("{}", e);
+                        return Err(e);
+                    },
+                };                
+                let info = ty_aug.information().clone();
+                debug!("Completed TypeCk on Func w/ Type: {:?}", info);
+                Ok(Item::Function(ty_aug))
             },
         }
     }
@@ -341,5 +361,17 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                 Ok(Statement::VarStatement { ident: ident.clone(), init: aug_expr, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
             },
         }
+    }
+
+    fn visit_function(&self, func: &Function<ParseInfo>) -> Result<Function<Self::InfoOut>, TransformError> {
+        let body_ty = self.transform_tree(&func.chunk)?;
+
+        if body_ty.information().ty != func.return_ty {
+            error!("function body does not match return ty");
+            return Err(TransformError::TypeCkError(TypeCkError::InvalidFunctionReturn(body_ty.information().ty.clone(), func.return_ty.clone())));
+        };
+
+        Ok(Function { args: func.args.clone(), chunk: body_ty, name: func.name.clone(), return_ty: func.return_ty.clone(), information: TypeCkOutput { ty: func.return_ty.clone(), pi: func.information.clone() } })
+
     }
 }

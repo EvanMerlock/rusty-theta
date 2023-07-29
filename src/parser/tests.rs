@@ -1,22 +1,22 @@
-use crate::{lexer::token::{Token, TokenType}, token, literal, binary, statement, ast::Expression, if_expression};
+use crate::{lexer::token::{Token, TokenType}, token, literal, binary, statement, ast::{Expression, AbstractTree, Statement}, if_expression};
 
 macro_rules! define_parse_test {
     ($test_name:ident, $input:expr, $output:expr) => {
         #[test]
         fn $test_name() {
-            use crate::ast::{AbstractTree, Expression, Statement};
-            use super::{Parser, BasicParser};
+            use crate::ast::AbstractTree;
+            use super::BasicParser;
             let input = $input;
             let mut iter = input.into_iter();
             {
-                let parser = BasicParser::new(&mut iter);
+                let mut parser = BasicParser::new(&mut iter);
 
-                let actual_out = parser.parse();
+                let actual_out = parser.declaration();
     
                 assert_eq!(actual_out.is_ok(), true);
                 let trees = actual_out.expect("failed to unwrap in test");
-                let (tree, _sym) = &trees[0];
-                assert_eq!(tree.clone().strip_information(), $output);
+                let ast: AbstractTree<()> = AbstractTree::statement(trees.strip_information(), ());
+                assert_eq!(ast, $output);
             }
         }
     };
@@ -96,3 +96,9 @@ define_parse_fail_test!(parser_should_fail_extra_closing_braces, FAIL_TEST_1);
 
 const FAIL_TEST_2: [Token; 3] = [token!(TokenType::LeftBrace), token!(TokenType::RightBrace), token!(TokenType::LeftBrace)];
 define_parse_fail_test!(parser_should_fail_extra_opening_braces, FAIL_TEST_2);
+
+const LITERAL_PRINT_STATEMENT_AS_FUNCTION_CALL: Token = token!(TokenType::Integer(1));
+const PRINT_STATEMENT_AS_FUNCTION_CALL_OUTPUT: Statement<()> = statement!(
+    Print: Expression::Literal { literal: LITERAL_PRINT_STATEMENT_AS_FUNCTION_CALL, information: () }
+);
+define_parse_test!(print_statement_as_function_call_not_as_sequence, [token!(TokenType::Identifier(String::from("print"))), token!(TokenType::LeftParen), token!(TokenType::Integer(1)), token!(TokenType::RightParen), token!(TokenType::Semicolon)], AbstractTree::statement(PRINT_STATEMENT_AS_FUNCTION_CALL_OUTPUT, ()));

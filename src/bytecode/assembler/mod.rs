@@ -11,6 +11,7 @@ use crate::bytecode::{Chunk};
 
 use super::ThetaBitstream;
 use super::ThetaConstant;
+use super::ThetaCompiledFunction;
 use super::ThetaFunction;
 use super::bitstream;
 

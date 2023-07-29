@@ -3,18 +3,24 @@ use std::fmt;
 
 mod basic;
 mod parseinfo;
+mod repl;
 
 #[cfg(test)]
 mod tests;
 
+use crate::ast::Function;
+use crate::ast::symbol::ExtSymbolTable;
+
 pub use self::basic::*;
 pub use self::parseinfo::*;
+pub use self::repl::*;
 
 pub trait Parser {
 
     type Out;
 
-    fn parse(self) -> Self::Out;
+    fn next(&mut self) -> Result<Self::Out, ParseError>;
+    fn parse(self) -> Result<Vec<Self::Out>, ParseError>;
     
 }
 

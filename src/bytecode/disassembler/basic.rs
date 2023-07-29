@@ -1,27 +1,31 @@
 use log::debug;
 
-use crate::{bytecode::{BITSTREAM_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, ThetaValue, INT_MARKER, BOOL_MARKER, STRING_MARKER, OpCode, ThetaBitstream, ThetaString, ThetaHeapValue, FUNCTION_POOL_HEADER, FUNCTION_HEADER, ThetaFunction, ThetaFuncArg, CHUNK_HEADER, ThetaFileVisitor, ThetaConstant}, ast::transformers::typeck::TypeInformation};
+use crate::{bytecode::{BITSTREAM_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, ThetaValue, INT_MARKER, BOOL_MARKER, STRING_MARKER, OpCode, ThetaCompiledBitstream, ThetaString, ThetaHeapValue, FUNCTION_POOL_HEADER, FUNCTION_HEADER, ThetaCompiledFunction, ThetaFuncArg, CHUNK_HEADER, ThetaFileVisitor, ThetaConstant, ThetaFileWalker}, ast::transformers::typeck::TypeInformation};
 
 use super::{Disassembler, DisassembleError};
 
 pub struct BasicDisassembler<'a, F> where F: FnMut(ThetaString) -> ThetaValue {
     interning_fn: &'a mut F,
-    bitstream: ThetaBitstream,
+    bitstream: ThetaCompiledBitstream,
 }
 
 impl<'a, F> BasicDisassembler<'a, F> where F: FnMut(ThetaString) -> ThetaValue {
     pub fn new(interning_fn: &'a mut F) -> BasicDisassembler<'a, F> {
         BasicDisassembler {
             interning_fn,
-            bitstream: ThetaBitstream::new()
+            bitstream: ThetaCompiledBitstream::new()
         }
     }
 }
 
 impl<'a, F> Disassembler for BasicDisassembler<'a, F> where F: FnMut(ThetaString) -> ThetaValue {
-    type Out = ThetaBitstream;
+    type Out = ThetaCompiledBitstream;
 
-    fn disassemble(&mut self, input: &dyn AsRef<[u8]>) -> Result<ThetaBitstream, DisassembleError> {
+    fn disassemble(&mut self, input: &dyn AsRef<[u8]>) -> Result<ThetaCompiledBitstream, DisassembleError> {
+        // drive disassembly
+        let mut tfw = ThetaFileWalker {};
+        tfw.walk_theta_file(self, input)?;
+        
         Ok(self.bitstream.clone())
     }
 }
@@ -33,7 +37,7 @@ impl<'a, F> ThetaFileVisitor for BasicDisassembler<'a, F> where F: FnMut(ThetaSt
 
     fn visit_theta_bitstream(&mut self) {
         debug!("seen theta bitstream");
-        self.bitstream = ThetaBitstream::new();
+        self.bitstream = ThetaCompiledBitstream::new();
     }
 
     fn visit_theta_constant(&mut self, constant: ThetaConstant) {
@@ -50,7 +54,7 @@ impl<'a, F> ThetaFileVisitor for BasicDisassembler<'a, F> where F: FnMut(ThetaSt
         }
     }
 
-    fn visit_theta_function(&mut self, function: ThetaFunction) {
+    fn visit_theta_function(&mut self, function: ThetaCompiledFunction) {
         todo!()
     }
 }

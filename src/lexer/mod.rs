@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-pub(crate) mod token;
+pub mod token;
 mod basic;
 
 use std::error::Error;

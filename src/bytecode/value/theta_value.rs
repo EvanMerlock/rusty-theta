@@ -1,8 +1,12 @@
 use std::rc::Rc;
 use std::ops::{Deref, Add};
+use std::fmt::Debug;
 
+use crate::ast::Function;
 use crate::ast::transformers::typeck::TypeInformation;
-use crate::bytecode::OpCode;
+use crate::bytecode::{OpCode, Chunk};
+
+use super::Symbol;
 
 pub const CONSTANT_POOL_HEADER: [u8; 8] = [84, 104, 101, 67, 111, 110, 115, 116];
 pub const FUNCTION_POOL_HEADER: [u8; 8] = [0xF4, 0x17, 0xC7, 0x10, 0x17, 0x90, 0x09, 0xF4];
@@ -21,7 +25,7 @@ pub enum ThetaValue {
     HeapValue(Rc<ThetaHeapValue>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ThetaConstant {
     Double(f64),
     Int(i64),
@@ -41,6 +45,12 @@ impl ThetaString {
 
     pub fn internal(&self) -> &Rc<String> {
         &self.internal
+    }
+}
+
+impl From<Symbol> for ThetaString {
+    fn from(value: Symbol) -> Self {
+        ThetaString::new(value.to_string())
     }
 }
 
@@ -70,14 +80,22 @@ pub struct ThetaUserType {
 #[derive(Debug, Clone)]
 pub struct ThetaFunction {
     pub args: Vec<ThetaFuncArg>,
-    pub chunk: Vec<u8>,
+    pub chunk: Chunk,
     pub name: ThetaString,
     pub return_ty: TypeInformation,
 }
 
 #[derive(Debug, Clone)]
+pub struct ThetaCompiledFunction {
+    pub args: Vec<ThetaFuncArg>,
+    pub chunk: Vec<u8>,
+    pub name: ThetaString,
+    pub return_ty: TypeInformation,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct ThetaFuncArg {
-    ty: TypeInformation
+    pub ty: TypeInformation
 }
 
 impl From<TypeInformation> for ThetaFuncArg {

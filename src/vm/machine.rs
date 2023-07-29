@@ -2,7 +2,7 @@ use std::{rc::Rc, collections::HashMap};
 
 use log::{debug, error};
 
-use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER, ThetaString, ThetaBitstream, BITSTREAM_HEADER, BasicDisassembler};
+use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER, ThetaString, ThetaBitstream, BITSTREAM_HEADER, BasicDisassembler, ThetaFunction, ThetaCompiledFunction, ThetaCompiledBitstream};
 
 use super::call_frame::ThetaStack;
 
@@ -12,18 +12,20 @@ use super::call_frame::ThetaStack;
 // and thus will take less time than execution except on REPL.
 pub struct VM {
     stack: ThetaStack,
-    constants: Vec<ThetaValue>,
     strings: HashMap<ThetaString, Rc<ThetaHeapValue>>,
     heap: Vec<Rc<ThetaHeapValue>>,
+    loaded_bitstreams: Vec<Rc<ThetaCompiledBitstream>>,
+    function_table: HashMap<ThetaString, ThetaCompiledFunction>,
 }
 
 impl VM {
     pub fn new() -> VM {
         VM {
-            stack: ThetaStack::new(Rc::new(ThetaBitstream::new())),
+            stack: ThetaStack::new(Rc::new(ThetaCompiledBitstream::new())),
             strings: HashMap::new(),
-            constants: Vec::new(),
             heap: Vec::new(),
+            loaded_bitstreams: vec![],
+            function_table: HashMap::new(),
         }
     }
 
@@ -35,10 +37,6 @@ impl VM {
         &self.stack
     }
 
-    pub fn constants(&self) -> &Vec<ThetaValue> {
-        &self.constants
-    }
-
     pub fn heap(&self) -> &Vec<Rc<ThetaHeapValue>> {
         &self.heap
     }
@@ -47,8 +45,12 @@ impl VM {
         self.stack.globals()
     }
 
-    pub fn clear_const_pool(&mut self) {
-        self.constants.clear()
+    pub fn constants(&self) -> &Vec<ThetaValue> {
+        &self.stack.curr_frame().expect("stack should always have frame").bitstream.constants
+    }
+
+    pub fn functions(&self) -> &HashMap<ThetaString, ThetaCompiledFunction> {
+        &self.function_table
     }
 
     pub fn intern_string(&mut self, s_val: ThetaString) -> ThetaValue {
@@ -63,11 +65,18 @@ impl VM {
         };
         ThetaValue::HeapValue(hv)
     }
+
+    pub fn load_bitstream(&mut self, bs: ThetaCompiledBitstream) -> Rc<ThetaCompiledBitstream> {
+        let loaded_bs = Rc::new(bs);
+        self.loaded_bitstreams.push(loaded_bs.clone());
+        self.stack.set_bitstream(loaded_bs.clone());
+        loaded_bs
+    }
 }
 
 impl VM {
     pub fn execute_code(&mut self, chunk: &[u8]) -> Result<(), DisassembleError> {
-        let mut offset: usize = 18;
+        let mut offset: usize = 8;
 
         debug!("chunk: {:X?}", chunk);
 
@@ -77,7 +86,6 @@ impl VM {
         debug!("=== BEGIN CHUNK ===");
 
         debug!("-- BEGIN INSTRUCTIONS --");
-        
 
         while offset < chunk.len() {
             // read into chunk
@@ -89,7 +97,8 @@ impl VM {
                 },
                 0x1 => { 
                     debug!("Op: Constant (0x1) with offset: {:#X}", &chunk[offset+1]); 
-                    self.stack.push(self.constants[chunk[offset+1] as usize].clone()); 
+                    let constant = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[offset+1] as usize].clone();
+                    self.stack.push(constant); 
                     offset += 2 
                 },
                 0x2 => { 
@@ -228,7 +237,7 @@ impl VM {
                 },
                 0xC0 => { 
                     debug!("Op: Define Global (0xC0) with offset: {:#X}", chunk[offset+1] as usize);
-                    let glob = self.constants[chunk[offset+1] as usize].clone();
+                    let glob = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[offset+1] as usize].clone();
                     match glob {
                         ThetaValue::HeapValue(hv) => {
                             match &*hv {
@@ -245,7 +254,7 @@ impl VM {
                 },
                 0xC1 => { 
                     debug!("Op: Read Global (0xC1)");
-                    let glob = self.constants[chunk[offset+1] as usize].clone();
+                    let glob = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[offset+1] as usize].clone();
                     match glob {
                         ThetaValue::HeapValue(hv) => {
                             match &*hv {

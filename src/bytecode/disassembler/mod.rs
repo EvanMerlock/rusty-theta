@@ -6,6 +6,8 @@ mod basic;
 pub use self::string::*;
 pub use self::basic::*;
 
+use super::FileVisitError;
+
 pub trait Disassembler {
     type Out;
 
@@ -18,6 +20,7 @@ pub enum DisassembleError {
     TryFromSliceError(std::array::TryFromSliceError),
     Utf8Error(std::string::FromUtf8Error),
     InvalidMarkerInChunk(Vec<u8>),
+    FileWalkError(FileVisitError),
 }
 
 impl fmt::Display for DisassembleError {
@@ -27,6 +30,7 @@ impl fmt::Display for DisassembleError {
             DisassembleError::TryFromSliceError(tfs) => write!(f, "Could not get item from slice: {}", tfs),
             DisassembleError::Utf8Error(utf) => write!(f, "UTF-8 error: {}", utf),
             DisassembleError::InvalidMarkerInChunk(marker) => write!(f, "invalid marker: [{}, {}]", marker[0], marker[1]),
+            DisassembleError::FileWalkError(fw) => write!(f, "file walk error: {}", fw),
         }
     }
 }
@@ -48,5 +52,11 @@ impl From<std::array::TryFromSliceError> for DisassembleError {
 impl From<std::string::FromUtf8Error> for DisassembleError {
     fn from(e: std::string::FromUtf8Error) -> Self {
         DisassembleError::Utf8Error(e)
+    }
+}
+
+impl From<FileVisitError> for DisassembleError {
+    fn from(value: FileVisitError) -> Self {
+        DisassembleError::FileWalkError(value)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{bytecode::Symbol};
+use crate::bytecode::Symbol;
 use std::fmt::Debug;
 
 use super::Expression;
@@ -35,6 +35,14 @@ impl<T: Debug + PartialEq> Statement<T> {
             Statement::ExpressionStatement { expression, information: _ } => Statement::ExpressionStatement { expression: expression.strip_information(), information: () },
             Statement::PrintStatement { expression, information: _ } => Statement::PrintStatement { expression: expression.strip_information(), information: () },
             Statement::VarStatement { ident, init, information: _ } => Statement::VarStatement { ident, init: init.strip_information(), information: () },
+        }
+    }
+
+    pub fn strip_token_information(self) -> Statement<T> {
+        match self {
+            Statement::ExpressionStatement { expression, information } => Statement::ExpressionStatement { expression: expression.strip_token_information(), information },
+            Statement::PrintStatement { expression, information } => Statement::PrintStatement { expression: expression.strip_token_information(), information },
+            Statement::VarStatement { ident, init, information } => Statement::VarStatement { ident, init: init.strip_token_information(), information },
         }
     }
 }

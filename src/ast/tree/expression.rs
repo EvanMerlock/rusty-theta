@@ -74,4 +74,17 @@ impl<T: Debug + PartialEq> Expression<T> {
             Expression::LoopExpression { predicate, body, information: _ } => Expression::LoopExpression { predicate: predicate.map(|x| Box::new(x.strip_information())), body: Box::new(body.strip_information()), information: () },
         }
     }
+
+    pub fn strip_token_information(self) -> Expression<T> {
+        match self {
+            Expression::Binary { left, operator, right, information } => Expression::Binary { left: Box::new(left.strip_token_information()), operator: operator.strip_information(), right: Box::new(right.strip_token_information()), information },
+            Expression::Unary { operator, right, information } => Expression::Unary { operator: operator.strip_information(), right: Box::new(right.strip_token_information()), information },
+            Expression::Literal { literal, information } => Expression::Literal { literal: literal.strip_information(), information },
+            Expression::Sequence { seq, information } => Expression::Sequence { seq: seq.into_iter().map(|x| x.strip_token_information()).collect(), information },
+            Expression::Assignment { name, value, information } => Expression::Assignment { name, value: Box::new(value.strip_token_information()), information },
+            Expression::If { check_expression, body, else_body, information } => Expression::If { check_expression: Box::new(check_expression.strip_token_information()), body: Box::new(body.strip_token_information()), else_body: else_body.map(|stmt| Box::new(stmt.strip_token_information())), information },
+            Expression::BlockExpression { statements, information } => Expression::BlockExpression { statements: statements.into_iter().map(|x| x.strip_token_information()).collect(), information },
+            Expression::LoopExpression { predicate, body, information } => Expression::LoopExpression { predicate: predicate.map(|x| Box::new(x.strip_token_information())), body: Box::new(body.strip_token_information()), information },
+        }
+    }
 }

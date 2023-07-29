@@ -1,7 +1,7 @@
 use clap::{clap_derive::ArgEnum, Parser as ClapParser};
 use log::debug;
 use std::{fs::File, io::BufReader, cell::RefCell, rc::Rc};
-use theta_lang::{bytecode::{AssembleError, Assembler, BasicAssembler, PlainTextAssembler, Chunk}, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}, ast::{symbol::SymbolTable, transformers::{typeck::TypeCk, to_bytecode::ToByteCode, ASTTransformer}}};
+use theta_lang::{bytecode::{AssembleError, Assembler, BasicAssembler, PlainTextAssembler, Chunk}, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser, ReplParser}, ast::{symbol::SymbolTable, transformers::{typeck::TypeCk, to_bytecode::ToByteCode, ASTTransformer}, Item}};
 
 #[derive(ClapParser)]
 #[clap(version = "0.0.1", author = "Evan Merlock")]
@@ -54,11 +54,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tbl = Rc::new(RefCell::new(SymbolTable::default()));
     let parser = BasicParser::new_sym(&mut token_stream, tbl);
     let trees = parser.parse()?;
-    let (ast, sym) = &trees[0];
+    let pi = &trees[0];
+    let (ast) = match pi {
+        Item::Function(func) => func.chunk.clone(),
+        _ => panic!("invalid item"),
+    };
+    let sym = ast.information().current_symbol_table.clone();
     debug!("sym: {:?}", sym.borrow());
-    let type_cker = TypeCk::new(sym.clone());
-    let type_check = type_cker.transform(ast)?;
-    let chunk = ToByteCode.transform(&type_check)?;
+    let type_cker = TypeCk::new(sym);
+    let type_check = type_cker.transform_tree(&ast)?;
+    let chunk = ToByteCode.transform_tree(&type_check)?;
     debug!("chunk: {:?}", chunk);
 
     {

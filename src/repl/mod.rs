@@ -1,13 +1,16 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::io::Cursor;
 use std::rc::Rc;
 
 use log::{LevelFilter, debug};
 
+use crate::ast::Item;
 use crate::ast::symbol::{SymbolTable, ExtSymbolTable};
 use crate::ast::transformers::typeck::TypeCk;
 use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
-use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk};
+use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk, ThetaBitstream, ThetaString, ThetaFunction, ThetaCompiledFunction, ThetaCompiledBitstream, ThetaValue, BasicDisassembler};
+use crate::parser::{ReplParser, ReplItem};
 use crate::{vm::VM, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}};
 
 // TODO: move REPL to using a direct to instruction assembler. Then we don't need the disassembly step.
@@ -26,7 +29,7 @@ impl Repl {
     pub fn init() -> Repl {
         Repl {
             machine: VM::new(),
-            tbl: Rc::new(RefCell::new(SymbolTable::default())),
+            tbl: ExtSymbolTable::default(),
         }
     }
 
@@ -46,12 +49,12 @@ impl Repl {
                         "--globals" => {
                             debug!("Globals: {:#?}", self.machine.globals());
                         },
-                        "--symbols" => {
-                            debug!("Symbol Table: {:#?}", self.tbl);
-                        },
                         "--strings" => {
                             debug!("Interned Strings: {:#?}", self.machine.strings());
-                        }
+                        },
+                        "--functions" => {
+                            debug!("Function Pool: {:#?}", self.machine.functions());
+                        },
                         "--quit" | "--exit" => {
                             return Ok(ReplStatus::ReplTerminate);
                         },
@@ -65,31 +68,78 @@ impl Repl {
                 let tokens = lexer.lex()?;
                 let mut token_stream = tokens.into_iter();
                 let parser = BasicParser::new_sym(&mut token_stream, self.tbl.clone());
+                let parser = ReplParser::new(parser);
                 let trees = parser.parse()?;
-                let (ast, sym) = &trees[0];
+
+                let mut bitstream = ThetaBitstream::new();
+                let mut chunk = Chunk::new();
+
+                for item in trees {
+                    self.repl_item(item, &mut bitstream, &mut chunk)?;
+                }
+
+                // compile bitstream 
+                
+                let mut compiled_bitstream = Vec::new();
+                let mut basic_assembler = BasicAssembler::new(&mut compiled_bitstream);
+                basic_assembler.assemble_bitstream(bitstream)?;
+
+                // load into machine
+
+                let mut intern_fn = |x| self.machine.intern_string(x);
+                let mut basic_diassembler = BasicDisassembler::new(&mut intern_fn);
+                let comp_bs = basic_diassembler.disassemble(&compiled_bitstream)?;
+                let loaded_bs = self.machine.load_bitstream(comp_bs);
+                
+                // compile chunk
+
+                let mut compiled_chunk = Vec::new();
+                let mut basic_assembler = BasicAssembler::new(&mut compiled_chunk);
+                basic_assembler.assemble_chunk(chunk)?;
+
+                // execute chunk
+
+                self.machine.execute_code(&compiled_chunk)?;
+
+                Ok(ReplStatus::ReplOk)
+    }
+
+    fn repl_item(&mut self, item: ReplItem, bitstream: &mut ThetaBitstream, chunk: &mut Chunk) -> Result<(), Box<dyn std::error::Error>> {
+        match item {
+            ReplItem::ParserItem(pi) => {
+                    let sym = &pi.information().current_symbol_table;
+                    debug!("sym: {:?}", sym.borrow());
+                    let type_cker = TypeCk::new(sym.clone());
+                    let type_check = type_cker.transform_item(&pi)?;
+                    let mut theta_func = ToByteCode.transform_item(&type_check)?;
+
+                    // need to pull out constants and reloc
+                    let consts = theta_func.chunk.constants();
+
+                    let reloc = bitstream.constants.len();
+                    bitstream.constants.extend_from_slice(consts);
+                    
+                    let new_ck = theta_func.chunk.relocate(reloc);
+                    theta_func.chunk = new_ck;
+                    bitstream.functions.push(theta_func);
+            },
+            ReplItem::Declaration(decl) => {
+                let sym = decl.information().current_symbol_table.clone();
                 debug!("sym: {:?}", sym.borrow());
                 let type_cker = TypeCk::new(sym.clone());
-                self.tbl = sym.clone();
-                let type_check = type_cker.transform(ast)?;
-                let chunk = ToByteCode.transform(&type_check)?;
-                {
-                    let mut code = Box::new(Cursor::new(Vec::new()));
-                    {
-                        let mut assembler = BasicAssembler::new(&mut code);
-            
-                        assembler.assemble_chunk(chunk)?;
-                    }
-                    self.machine.execute_code(code.get_ref())?;
-                    //TODO: should not need to do this. linking/relative offsetting?
-                    // most likely need to clear symbol table of non-top-level symbols after every run since functions + user def. types should keep their own sym tbl
-                    // idents should be stored in const pool as necessary
-                    // need to come up with cleaner way of cleaning up machine after individual REPL line runs
-                    // some things need to stay resident and others do not.
+                let type_check = type_cker.transform_tree(&decl)?;
+                let ty_chunk = ToByteCode.transform_tree(&type_check)?;
 
-                    // RESOLVED: page in the bitstream as relevant.
-                    // remove constant pool from chunks
-                    self.machine.clear_const_pool();
-                }
-                Ok(ReplStatus::ReplOk)
+                let reloc = bitstream.constants.len();
+                let new_chunk = ty_chunk.relocate(reloc);
+
+                bitstream.constants.extend_from_slice(new_chunk.constants());
+
+                let new_ck = chunk.clone().merge_chunk(new_chunk);
+                *chunk = new_ck;
+            },
+        };
+
+        Ok(())
     }
 }

@@ -1,7 +1,7 @@
 use std::{iter::Peekable, rc::Rc, cell::RefCell};
 use log::{debug, error, trace};
 
-use crate::{ast::{symbol::{SymbolTable, SymbolData, ExtSymbolTable, ExtFrameData, FrameData}, transformers::{typeck::TypeInformation}, Statement, Expression, AbstractTree}, bytecode::Symbol};
+use crate::{ast::{symbol::{SymbolTable, SymbolData, ExtSymbolTable, ExtFrameData, FrameData}, transformers::{typeck::TypeInformation}, Statement, Expression, AbstractTree, FunctionArg, Function, Item}, bytecode::{Symbol, ThetaString}};
 use super::{Parser, ParseInfo, ParseError};
 use crate::lexer::token::{Token, TokenType};
 
@@ -55,11 +55,11 @@ impl<'a> BasicParser<'a> {
         self.tokens.next()
     }
 
-    fn peek(&mut self) -> Option<&Token> {
+    pub fn peek(&mut self) -> Option<&Token> {
         self.tokens.peek()
     }
 
-    fn is_at_end(&mut self) -> bool {
+    pub fn is_at_end(&mut self) -> bool {
         match self.peek() {
             Some(tok) => tok.ty() == TokenType::Eof,
             None => true
@@ -132,7 +132,81 @@ impl<'a> BasicParser<'a> {
         }
     }
 
-    fn declaration(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
+    // TODO: This needs to read in a function declaration and then grab the internal block
+    // this should be where the parser begins
+    // https://doc.rust-lang.org/reference/items.html
+    fn item(&mut self) -> Result<Item<ParseInfo>, ParseError> {
+        trace!("read parser item");
+        if let Some(_func_tok) = self.match_token([TokenType::Fun]) {
+            let func_name = self.consume_if(|ty| ty.is_ident(), "Expected function name")?;
+            let func_name = Symbol::new(func_name)?;
+            self.consume(TokenType::LeftParen, "Expected '(' after function name")?;
+            
+            let mut func_args = Vec::new();
+
+            // read function args
+            while self.match_token([TokenType::RightParen]).is_none() {
+                let func_arg_name = self.consume_if(|ty| ty.is_ident(), "could not find function argument name")?;
+                let func_arg_name = Symbol::new(func_arg_name)?;
+
+                self.consume(TokenType::Colon, "no colon after arg name")?;
+
+                let func_arg_ty = self.consume_if(|ty| ty.is_ident(), "could not find function argument type")?;
+
+                let ty_ident = Symbol::new(func_arg_ty)?;
+
+                let ty_info = match self.symbol_tbl.borrow().get_symbol_data(&ty_ident, self.symbol_tbl.borrow().scope_depth()) {
+                    Some(SymbolData::Type { ty }) => ty,
+                    Some(_) => return Err(ParseError::from_other("ident is being used by something else")),
+                    // assume forward declaration here. if the type continues to not be defined via ID, we will error on compilation.
+                    None => TypeInformation::NonLiteral(ty_ident.clone()),
+                };
+
+
+                let func_arg = FunctionArg {
+                    name: func_arg_name,
+                    ty: ty_info,
+                };
+
+                func_args.push(func_arg);
+            }
+
+            // read func return
+            let ret_ty = if let Some(_arrow_tok) = self.match_token([TokenType::Arrow]) {
+                let func_arg_ty = self.consume_if(|ty| ty.is_ident(), "could not find function argument type")?;
+
+                let ty_ident = Symbol::new(func_arg_ty)?;
+
+                match self.symbol_tbl.borrow().get_symbol_data(&ty_ident, self.symbol_tbl.borrow().scope_depth()) {
+                    Some(SymbolData::Type { ty }) => ty,
+                    Some(_) => return Err(ParseError::from_other("ident is being used by something else")),
+                    // assume forward declaration here. if the type continues to not be defined via ID, we will error on compilation.
+                    None => TypeInformation::NonLiteral(ty_ident.clone()),
+                }
+            } else {
+                TypeInformation::None
+            };
+
+            // read block
+            self.consume(TokenType::LeftBrace, "no block before function")?;
+            let block = self.block_expression()?;
+
+            let func = Function {
+                args: func_args,
+                chunk: AbstractTree::expression(block.clone(), block.information().clone()),
+                name: func_name,
+                return_ty: ret_ty,
+                information: ParseInfo { scope_depth: 0, current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone() },
+            };
+
+            Ok(Item::Function(func))
+        } else {
+            error!("Could not find top level item");
+            Err(ParseError::Other { msg: "failed to find top level item" })
+        }
+    }
+
+    pub fn declaration(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         trace!("read declaration");
         let stmt = if let Some(_var_tok) = self.match_token([TokenType::Let]) {
             self.var_declaration()
@@ -218,7 +292,9 @@ impl<'a> BasicParser<'a> {
 
     fn print_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         trace!("read print statement");
+        self.consume(TokenType::LeftParen, "Expected ( before print statement")?;
         let expression = self.expression()?;
+        self.consume(TokenType::RightParen, "Expected ) after print statement")?;
         self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
         Ok(Statement::PrintStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
     }
@@ -439,22 +515,26 @@ impl<'a> BasicParser<'a> {
 }
 
 impl<'a> Parser for BasicParser<'a> {
-    type Out = Result<Vec<(AbstractTree<ParseInfo>, ExtSymbolTable)>, ParseError>;
+    type Out = Item<ParseInfo>;
 
-    fn parse(mut self) -> Result<Vec<(AbstractTree<ParseInfo>, ExtSymbolTable)>, ParseError> {
+    fn parse(mut self) -> Result<Vec<Item<ParseInfo>>, ParseError> {
         let mut trees = Vec::new();
 
         while !self.is_at_end() {
-            self.frame_data = Rc::new(RefCell::new(FrameData::new()));
-            let pot_tree = self
-                .declaration()
-                .map(|stmt| 
-                    (AbstractTree::statement(stmt, ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone())), self.root_symbol_tbl.clone())
-                )?;
-
-            trees.push(pot_tree);
+            let item = self.next()?;
+            trees.push(item);
         }
 
         Ok(trees)
+    }
+
+    fn next(&mut self) -> Result<Self::Out, ParseError> {
+        // clean frame data and symbol tables. The root should likely not be changed when we add cross-modules'
+        // TODO: remove root_symbol_tbl changes here
+        self.frame_data = Rc::new(RefCell::new(FrameData::new()));
+        self.root_symbol_tbl = Rc::new(RefCell::new(SymbolTable::default()));
+        self.symbol_tbl = self.root_symbol_tbl.clone();
+
+        self.item()
     }
 }

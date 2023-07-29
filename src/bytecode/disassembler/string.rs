@@ -186,7 +186,7 @@ impl ThetaFileVisitor for StringDisassembler {
         }
     }
 
-    fn visit_theta_function(&mut self, function: crate::bytecode::ThetaFunction) {
+    fn visit_theta_function(&mut self, function: crate::bytecode::ThetaCompiledFunction) {
         debug!("seen theta function")
     }
 }

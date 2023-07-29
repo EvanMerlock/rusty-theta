@@ -50,6 +50,17 @@ impl Token {
     pub fn ty(&self) -> TokenType {
         self.1.clone()
     }
+
+    pub fn strip_information(self) -> Token {
+        Token (
+            LocationData {
+                line_num: 1,
+                tok_begin: 0,
+                tok_end: 1
+            },
+            self.1
+        )
+    }
 }
 
 impl Display for Token {
@@ -103,6 +114,13 @@ impl TokenType {
 
     pub fn is_ident(&self) -> bool {
         matches!(self, Self::Identifier(_))
+    }
+
+    pub fn as_ident(&self) -> String {
+        match self {
+            TokenType::Identifier(s) => s.clone(),
+            _ => panic!("as ident as non ident")
+        }
     }
 }
 

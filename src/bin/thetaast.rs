@@ -45,10 +45,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut tok_stream = tokens.into_iter();
 
     let parser = BasicParser::new(&mut tok_stream);
-    let expression = parser.parse()?;
+    let pi = parser.parse()?;
 
-    for (tree, _sym) in expression {
-        write!(&mut out_file, "{:?}", tree)?;
+    for item in pi {
+        write!(&mut out_file, "{:?}", item)?;
     }
 
 
