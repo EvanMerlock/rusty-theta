@@ -1,3 +1,4 @@
+use std::env::args;
 use std::error::Error;
 use std::fmt::Display;
 
@@ -48,7 +49,23 @@ impl ASTTransformer<TypeCkOutput> for ToByteCode {
     fn transform_item(&self, item: &Item<TypeCkOutput>) -> Result<Self::ItemOut, TransformError> {
         match item {
             Item::Function(func) => {
-                todo!()
+                let ck = self.transform_tree(&func.chunk)?;
+                let func_name = ThetaString::from(func.name.clone());
+
+                let mut theta_func_args = Vec::new();
+                for arg in &func.args {
+                    theta_func_args.push(ThetaFuncArg {
+                        ty: arg.ty.clone(),
+                    })
+                }
+
+
+                Ok(ThetaFunction {
+                    args: theta_func_args,
+                    chunk: ck,
+                    name: func_name,
+                    return_ty: func.return_ty.clone(),
+                })
             },
         }
     }
@@ -127,6 +144,10 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                                 Some(SymbolData::LocalVariable { ty: _, scope_level: _, slot }) => {
                                     build_chunk!(OpCode::GetLocal { offset: slot })
                                 },
+                                Some(SymbolData::Function { return_ty, args, fn_ty }) => {
+                                    // embed function / closure object
+                                    todo!()
+                                }
                                 None => return Err(TransformError::from(ToByteCodeError::NoIdentFound(id)))
                             }
                         }
@@ -158,6 +179,8 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     // TODO: this isn't right. we need to track globals when compiling a CU :vomits:
                     SymbolData::GlobalVariable { ty: _ } => build_chunk!(OpCode::DefineGlobal { offset: 0 }; st),
                     SymbolData::LocalVariable { ty: _, scope_level: _, slot } => build_chunk!(OpCode::DefineLocal { offset: slot }; st),
+                    // embed closure
+                    SymbolData::Function { return_ty, args, fn_ty } => todo!(),
                 };
                 set_chunk.merge_chunk(chunk)
             },
@@ -341,6 +364,10 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                             Some(SymbolData::LocalVariable { ty: _, scope_level: _, slot }) => {
                                 let glob_chunk = build_chunk!(OpCode::DefineLocal { offset: slot });
                                 Ok(init_chunk.merge_chunk(glob_chunk))
+                            },
+                            Some(SymbolData::Function { return_ty, args, fn_ty }) => {
+                                // build closure and embed it
+                                todo!()
                             },
                             None => return Err(TransformError::from(ToByteCodeError::NoIdentFound(ident.id().clone())))
                         }

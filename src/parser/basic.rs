@@ -44,11 +44,13 @@ impl<'a> BasicParser<'a> {
     }
 
     fn begin_scope(&mut self) {
-        self.symbol_tbl.borrow_mut().inc_scope_depth();
+        self.symbol_tbl = Rc::new(RefCell::new(SymbolTable::new_enclosed(self.symbol_tbl.clone())));
     }
 
     fn end_scope(&mut self) -> Result<(), ParseError> {
-        self.symbol_tbl.borrow_mut().dec_scope_depth()
+        let enclosing = self.symbol_tbl.borrow().enclosing().ok_or_else(|| ParseError::from_other("failed to end scope"))?;
+        self.symbol_tbl = enclosing;
+        Ok(())
     }
 
     fn advance(&mut self) -> Option<Token> {

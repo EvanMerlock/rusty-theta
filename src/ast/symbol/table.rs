@@ -1,6 +1,6 @@
 use std::{collections::{HashMap, hash_map::Entry}, rc::Rc, cell::RefCell};
 
-use crate::bytecode::Symbol;
+use crate::{bytecode::Symbol, ast::Function};
 
 use super::super::transformers::typeck::TypeInformation;
 use crate::parser::ParseError;
@@ -35,21 +35,20 @@ impl SymbolTable {
         self.entries.entry(key)
     }
 
-    pub fn inc_scope_depth(&mut self) {
-        self.scope_depth += 1
-    }
-
     pub fn scope_depth(&self) -> usize {
-        self.scope_depth
+        let mut sd = 0;
+        let mut enc = self.enclosing.clone();
+
+        while let Some(enc_tbl) = enc {
+            sd += 1;
+            enc = enc_tbl.borrow().enclosing.clone();
+        };
+
+        sd
     }
 
-    pub fn dec_scope_depth(&mut self) -> Result<(), ParseError> {
-        if self.scope_depth > 0 {
-            self.scope_depth -= 1;
-        } else {
-            return Err(ParseError::from_other("bad scope dec"));
-        }
-        Ok(())
+    pub fn enclosing(&self) -> Option<ExtSymbolTable> {
+        self.enclosing.clone()
     }
 
     pub fn get_symbol_data(&self, tk: &Symbol, sd: usize) -> Option<SymbolData> {
@@ -97,6 +96,11 @@ pub enum SymbolData {
         ty: TypeInformation,
         scope_level: usize,
         slot: usize,
+    },
+    Function {
+        return_ty: TypeInformation,
+        args: Vec<TypeInformation>,
+        fn_ty: TypeInformation
     }
 }
 
@@ -106,6 +110,7 @@ impl SymbolData {
             SymbolData::Type { ty } => ty,
             SymbolData::GlobalVariable { ty } => ty,
             SymbolData::LocalVariable { ty, slot: _, scope_level: _ } => ty,
+            SymbolData::Function { return_ty, args, fn_ty } => fn_ty,
         }
     }
 }

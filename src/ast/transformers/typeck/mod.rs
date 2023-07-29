@@ -71,6 +71,7 @@ pub enum TypeInformation {
     Float,
     Boolean,
     NonLiteral(Symbol),
+    Function(Box<TypeInformation>, Vec<TypeInformation>),
     None,
 }
 
@@ -83,6 +84,7 @@ impl Display for TypeInformation {
             TypeInformation::Boolean => write!(f, "Boolean"),
             TypeInformation::NonLiteral(s) => write!(f, "{}", s),
             TypeInformation::None => write!(f, "!"),
+            TypeInformation::Function(return_ty, args) => write!(f, "Fn({args:?}) -> {return_ty}"),
         }
     }
 }
@@ -347,6 +349,7 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                             SymbolData::Type { ty: _ } => return Err(TransformError::from(TypeCkError::InvalidTypeInPosition(ident.clone()))),
                             SymbolData::GlobalVariable { ty } => ty == aug_expr.information().ty,
                             SymbolData::LocalVariable { ty, slot: _, scope_level: _ } => ty == aug_expr.information().ty,
+                            SymbolData::Function { return_ty: _, args: _, fn_ty } => fn_ty == aug_expr.information().ty,
                         }
                     },
                     None => {

@@ -155,6 +155,7 @@ impl<'a> Assembler for BasicAssembler<'a> {
                     TypeInformation::Boolean => self.output_file.write_all(&[0x1])?,
                     TypeInformation::NonLiteral(_) => todo!(),
                     TypeInformation::None => self.output_file.write_all(&[0x0])?,
+                    TypeInformation::Function(_, _) => todo!(),
                 }
             }
 
@@ -165,6 +166,7 @@ impl<'a> Assembler for BasicAssembler<'a> {
                 TypeInformation::Boolean => self.output_file.write_all(&[0x1])?,
                 TypeInformation::NonLiteral(_) => todo!(),
                 TypeInformation::None => self.output_file.write_all(&[0x0])?,
+                TypeInformation::Function(_, _) => todo!(),
             }
         }
 
