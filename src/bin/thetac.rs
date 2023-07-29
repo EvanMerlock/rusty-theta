@@ -1,7 +1,7 @@
 use clap::{clap_derive::ArgEnum, Parser as ClapParser};
 use log::debug;
 use std::{fs::File, io::BufReader, cell::RefCell, rc::Rc};
-use theta_lang::{bytecode::{AssembleError, Assembler, BasicAssembler, PlainTextAssembler, Chunk}, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser, ReplParser}, ast::{symbol::SymbolTable, transformers::{typeck::TypeCk, to_bytecode::ToByteCode, ASTTransformer}, Item}};
+use theta_lang::{bytecode::{AssembleError, Assembler, BasicAssembler, PlainTextAssembler}, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}, ast::{symbol::SymbolTable, transformers::{typeck::TypeCk, to_bytecode::ToByteCode, ASTTransformer}, Item}};
 
 #[derive(ClapParser)]
 #[clap(version = "0.0.1", author = "Evan Merlock")]
@@ -55,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let parser = BasicParser::new_sym(&mut token_stream, tbl);
     let trees = parser.parse()?;
     let pi = &trees[0];
-    let (ast) = match pi {
+    let ast = match pi {
         Item::Function(func) => func.chunk.clone(),
         _ => panic!("invalid item"),
     };

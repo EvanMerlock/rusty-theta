@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use crate::bytecode::{ThetaValue, ThetaBitstream, ThetaCompiledBitstream};
+use crate::bytecode::{ThetaValue, ThetaCompiledBitstream};
 
 #[derive(Debug)]
 pub struct ThetaStack {

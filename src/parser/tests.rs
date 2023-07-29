@@ -1,4 +1,4 @@
-use crate::{lexer::token::{Token, TokenType}, token, literal, binary, statement, ast::{Expression, AbstractTree, Statement}, if_expression};
+use crate::{lexer::token::{Token, TokenType}, token, literal, binary, statement, ast::{Expression, Statement}, if_expression};
 
 macro_rules! define_parse_test {
     ($test_name:ident, $input:expr, $output:expr) => {

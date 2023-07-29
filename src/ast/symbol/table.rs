@@ -1,9 +1,9 @@
 use std::{collections::{HashMap, hash_map::Entry}, rc::Rc, cell::RefCell};
 
-use crate::{bytecode::Symbol, ast::Function};
+use crate::{bytecode::Symbol};
 
 use super::super::transformers::typeck::TypeInformation;
-use crate::parser::ParseError;
+
 
 pub type ExtSymbolTable = Rc<RefCell<SymbolTable>>;
 
@@ -110,7 +110,7 @@ impl SymbolData {
             SymbolData::Type { ty } => ty,
             SymbolData::GlobalVariable { ty } => ty,
             SymbolData::LocalVariable { ty, slot: _, scope_level: _ } => ty,
-            SymbolData::Function { return_ty, args, fn_ty } => fn_ty,
+            SymbolData::Function { return_ty: _, args: _, fn_ty } => fn_ty,
         }
     }
 }

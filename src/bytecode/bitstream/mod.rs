@@ -1,5 +1,5 @@
-use super::{ThetaCompiledFunction, ThetaValue, ThetaFunction, ThetaConstant};
-use crate::ast::Function;
+use super::{ThetaFunction, ThetaConstant};
+
 
 mod compiled;
 pub use self::compiled::*;

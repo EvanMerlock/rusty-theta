@@ -2,7 +2,7 @@ use std::{fmt, error::Error};
 
 use log::debug;
 
-use crate::{bytecode::{BITSTREAM_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, ThetaValue, INT_MARKER, BOOL_MARKER, STRING_MARKER, OpCode, ThetaBitstream, ThetaString, ThetaHeapValue, FUNCTION_POOL_HEADER, FUNCTION_HEADER, ThetaCompiledFunction, ThetaFuncArg, CHUNK_HEADER}, ast::transformers::typeck::TypeInformation};
+use crate::{bytecode::{BITSTREAM_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, BOOL_MARKER, STRING_MARKER, ThetaString, FUNCTION_POOL_HEADER, FUNCTION_HEADER, ThetaCompiledFunction, ThetaFuncArg, CHUNK_HEADER}, ast::transformers::typeck::TypeInformation};
 
 use super::ThetaConstant;
 
@@ -69,7 +69,7 @@ impl ThetaFileWalker {
 
         // first segment of the bitstream is the constant pool
         let fn_offset = self.walk_constant_pool(visitor, &bitstream[8..])?;
-        let after_offset = self.walk_function_pool(visitor, &bitstream[8+fn_offset..])?;
+        let _after_offset = self.walk_function_pool(visitor, &bitstream[8+fn_offset..])?;
 
         Ok(())
     }

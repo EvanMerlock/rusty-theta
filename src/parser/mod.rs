@@ -8,8 +8,8 @@ mod repl;
 #[cfg(test)]
 mod tests;
 
-use crate::ast::Function;
-use crate::ast::symbol::ExtSymbolTable;
+
+
 
 pub use self::basic::*;
 pub use self::parseinfo::*;

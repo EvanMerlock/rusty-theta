@@ -1,4 +1,4 @@
-use std::env::args;
+
 use std::error::Error;
 use std::fmt::Display;
 
@@ -144,7 +144,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                                 Some(SymbolData::LocalVariable { ty: _, scope_level: _, slot }) => {
                                     build_chunk!(OpCode::GetLocal { offset: slot })
                                 },
-                                Some(SymbolData::Function { return_ty, args, fn_ty }) => {
+                                Some(SymbolData::Function { return_ty: _, args: _, fn_ty: _ }) => {
                                     // embed function / closure object
                                     todo!()
                                 }
@@ -180,7 +180,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     SymbolData::GlobalVariable { ty: _ } => build_chunk!(OpCode::DefineGlobal { offset: 0 }; st),
                     SymbolData::LocalVariable { ty: _, scope_level: _, slot } => build_chunk!(OpCode::DefineLocal { offset: slot }; st),
                     // embed closure
-                    SymbolData::Function { return_ty, args, fn_ty } => todo!(),
+                    SymbolData::Function { return_ty: _, args: _, fn_ty: _ } => todo!(),
                 };
                 set_chunk.merge_chunk(chunk)
             },
@@ -365,7 +365,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                                 let glob_chunk = build_chunk!(OpCode::DefineLocal { offset: slot });
                                 Ok(init_chunk.merge_chunk(glob_chunk))
                             },
-                            Some(SymbolData::Function { return_ty, args, fn_ty }) => {
+                            Some(SymbolData::Function { return_ty: _, args: _, fn_ty: _ }) => {
                                 // build closure and embed it
                                 todo!()
                             },

@@ -2,9 +2,9 @@ use std::rc::Rc;
 use std::ops::{Deref, Add};
 use std::fmt::Debug;
 
-use crate::ast::Function;
+
 use crate::ast::transformers::typeck::TypeInformation;
-use crate::bytecode::{OpCode, Chunk};
+use crate::bytecode::{Chunk};
 
 use super::Symbol;
 

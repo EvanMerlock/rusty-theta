@@ -2,7 +2,7 @@ use std::{rc::Rc, collections::HashMap};
 
 use log::{debug, error};
 
-use crate::bytecode::{CHUNK_HEADER, CONSTANT_POOL_HEADER, INT_MARKER, DOUBLE_MARKER, BOOL_MARKER, ThetaValue, Disassembler, DisassembleError, ThetaHeapValue, STRING_MARKER, ThetaString, ThetaBitstream, BITSTREAM_HEADER, BasicDisassembler, ThetaFunction, ThetaCompiledFunction, ThetaCompiledBitstream};
+use crate::bytecode::{CHUNK_HEADER, ThetaValue, DisassembleError, ThetaHeapValue, ThetaString, ThetaCompiledFunction, ThetaCompiledBitstream};
 
 use super::call_frame::ThetaStack;
 

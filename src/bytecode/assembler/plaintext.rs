@@ -17,11 +17,11 @@ impl<'a> PlainTextAssembler<'a> {
 impl<'a> Assembler for PlainTextAssembler<'a> {
     type Out = Result<(), AssembleError>;
 
-    fn assemble(&mut self, bitstream: ThetaBitstream) -> Result<(), AssembleError> {
+    fn assemble(&mut self, _bitstream: ThetaBitstream) -> Result<(), AssembleError> {
         todo!()
     }
 
-    fn assemble_bitstream(&mut self, bitstream: ThetaBitstream) -> Self::Out {
+    fn assemble_bitstream(&mut self, _bitstream: ThetaBitstream) -> Self::Out {
         todo!()
     }
 
@@ -79,7 +79,7 @@ impl<'a> Assembler for PlainTextAssembler<'a> {
         Ok(())
     }
 
-    fn assemble_function_pool(&mut self, function_pool: Vec<ThetaFunction>) -> Self::Out {
+    fn assemble_function_pool(&mut self, _function_pool: Vec<ThetaFunction>) -> Self::Out {
         todo!()
     }
 }

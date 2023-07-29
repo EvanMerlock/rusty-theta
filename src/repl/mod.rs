@@ -1,15 +1,15 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::io::Cursor;
-use std::rc::Rc;
+
+
+
+
 
 use log::{LevelFilter, debug};
 
-use crate::ast::Item;
-use crate::ast::symbol::{SymbolTable, ExtSymbolTable};
+
+use crate::ast::symbol::{ExtSymbolTable};
 use crate::ast::transformers::typeck::TypeCk;
 use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
-use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk, ThetaBitstream, ThetaString, ThetaFunction, ThetaCompiledFunction, ThetaCompiledBitstream, ThetaValue, BasicDisassembler};
+use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk, ThetaBitstream, BasicDisassembler};
 use crate::parser::{ReplParser, ReplItem};
 use crate::{vm::VM, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}};
 

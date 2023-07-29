@@ -1,7 +1,7 @@
 use std::{iter::Peekable, rc::Rc, cell::RefCell};
 use log::{debug, error, trace};
 
-use crate::{ast::{symbol::{SymbolTable, SymbolData, ExtSymbolTable, ExtFrameData, FrameData}, transformers::{typeck::TypeInformation}, Statement, Expression, AbstractTree, FunctionArg, Function, Item}, bytecode::{Symbol, ThetaString}};
+use crate::{ast::{symbol::{SymbolTable, SymbolData, ExtSymbolTable, ExtFrameData, FrameData}, transformers::{typeck::TypeInformation}, Statement, Expression, AbstractTree, FunctionArg, Function, Item}, bytecode::{Symbol}};
 use super::{Parser, ParseInfo, ParseError};
 use crate::lexer::token::{Token, TokenType};
 

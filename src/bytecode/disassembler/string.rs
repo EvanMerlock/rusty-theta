@@ -1,7 +1,7 @@
 use log::debug;
 
 use crate::bytecode::{
-    BOOL_MARKER, CHUNK_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, INT_MARKER, STRING_MARKER, OpCode, ThetaBitstream, ThetaConstant, ThetaValue, ThetaFileVisitor,
+    CHUNK_HEADER, ThetaConstant, ThetaFileVisitor,
 };
 
 use super::{DisassembleError, Disassembler};
@@ -158,7 +158,7 @@ impl Disassembler for StringDisassembler {
         let mut readout = String::new();
 
         // TOOD: this only handles 1 chunk as that's all we're passing it right now.
-        let (offset, chunk_disassembly) = self.disassemble_chunk(input.as_ref())?;
+        let (_offset, chunk_disassembly) = self.disassemble_chunk(input.as_ref())?;
         readout.push_str(&chunk_disassembly);
 
         Ok(readout)
@@ -186,7 +186,7 @@ impl ThetaFileVisitor for StringDisassembler {
         }
     }
 
-    fn visit_theta_function(&mut self, function: crate::bytecode::ThetaCompiledFunction) {
+    fn visit_theta_function(&mut self, _function: crate::bytecode::ThetaCompiledFunction) {
         debug!("seen theta function")
     }
 }

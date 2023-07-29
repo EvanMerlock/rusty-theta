@@ -1,6 +1,6 @@
 use log::debug;
 
-use crate::{bytecode::{BITSTREAM_HEADER, CONSTANT_POOL_HEADER, DOUBLE_MARKER, ThetaValue, INT_MARKER, BOOL_MARKER, STRING_MARKER, OpCode, ThetaCompiledBitstream, ThetaString, ThetaHeapValue, FUNCTION_POOL_HEADER, FUNCTION_HEADER, ThetaCompiledFunction, ThetaFuncArg, CHUNK_HEADER, ThetaFileVisitor, ThetaConstant, ThetaFileWalker}, ast::transformers::typeck::TypeInformation};
+use crate::{bytecode::{ThetaValue, ThetaCompiledBitstream, ThetaString, ThetaCompiledFunction, ThetaFileVisitor, ThetaConstant, ThetaFileWalker}};
 
 use super::{Disassembler, DisassembleError};
 
