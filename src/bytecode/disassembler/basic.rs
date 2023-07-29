@@ -55,6 +55,6 @@ impl<'a, F> ThetaFileVisitor for BasicDisassembler<'a, F> where F: FnMut(ThetaSt
     }
 
     fn visit_theta_function(&mut self, function: ThetaCompiledFunction) {
-        todo!()
+        self.bitstream.functions.push(function);
     }
 }

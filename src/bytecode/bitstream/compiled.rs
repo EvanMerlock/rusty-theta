@@ -32,3 +32,9 @@ impl ThetaCompiledBitstream {
     }
 
 }
+
+impl Default for ThetaCompiledBitstream {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -15,7 +15,7 @@ pub struct VM {
     strings: HashMap<ThetaString, Rc<ThetaHeapValue>>,
     heap: Vec<Rc<ThetaHeapValue>>,
     loaded_bitstreams: Vec<Rc<ThetaCompiledBitstream>>,
-    function_table: HashMap<ThetaString, ThetaCompiledFunction>,
+    function_table: HashMap<ThetaString, (ThetaCompiledFunction, Rc<ThetaCompiledBitstream>)>,
 }
 
 impl VM {
@@ -49,7 +49,7 @@ impl VM {
         &self.stack.curr_frame().expect("stack should always have frame").bitstream.constants
     }
 
-    pub fn functions(&self) -> &HashMap<ThetaString, ThetaCompiledFunction> {
+    pub fn functions(&self) -> &HashMap<ThetaString, (ThetaCompiledFunction, Rc<ThetaCompiledBitstream>)> {
         &self.function_table
     }
 
@@ -69,6 +69,12 @@ impl VM {
     pub fn load_bitstream(&mut self, bs: ThetaCompiledBitstream) -> Rc<ThetaCompiledBitstream> {
         let loaded_bs = Rc::new(bs);
         self.loaded_bitstreams.push(loaded_bs.clone());
+
+        // TODO: this should not copy the functions.
+        for func in loaded_bs.functions() {
+            self.function_table.insert(func.name.clone(), (func.clone(), loaded_bs.clone()));
+        }
+
         self.stack.set_bitstream(loaded_bs.clone());
         loaded_bs
     }
