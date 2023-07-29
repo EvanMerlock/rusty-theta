@@ -6,7 +6,7 @@
 use log::{LevelFilter, debug};
 
 
-use crate::ast::symbol::{ExtSymbolTable};
+use crate::ast::symbol::ExtSymbolTable;
 use crate::ast::transformers::typeck::TypeCk;
 use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
 use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk, ThetaBitstream, BasicDisassembler};

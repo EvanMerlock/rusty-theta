@@ -7,7 +7,7 @@ use crate::ast::{Expression, Statement, AbstractTree, InnerAbstractTree, Item, F
 use crate::bytecode::{Chunk, OpCode, ThetaConstant, Symbol, ThetaFunction, ThetaFuncArg, ThetaString};
 use crate::{build_chunk, lexer::token};
 
-use super::typeck::{TypeCkOutput};
+use super::typeck::TypeCkOutput;
 use super::{ASTTerminator, ASTTransformer, TransformError};
 
 pub struct ToByteCode;

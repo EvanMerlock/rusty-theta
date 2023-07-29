@@ -1,6 +1,6 @@
 use log::debug;
 
-use crate::{bytecode::{ThetaValue, ThetaCompiledBitstream, ThetaString, ThetaCompiledFunction, ThetaFileVisitor, ThetaConstant, ThetaFileWalker}};
+use crate::bytecode::{ThetaValue, ThetaCompiledBitstream, ThetaString, ThetaCompiledFunction, ThetaFileVisitor, ThetaConstant, ThetaFileWalker};
 
 use super::{Disassembler, DisassembleError};
 

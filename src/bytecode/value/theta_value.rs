@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 
 use crate::ast::transformers::typeck::TypeInformation;
-use crate::bytecode::{Chunk};
+use crate::bytecode::Chunk;
 
 use super::Symbol;
 

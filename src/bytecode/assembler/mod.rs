@@ -7,7 +7,7 @@ pub use self::plaintext::*;
 use core::fmt;
 use std::error::Error;
 
-use crate::bytecode::{Chunk};
+use crate::bytecode::Chunk;
 
 use super::ThetaBitstream;
 use super::ThetaConstant;

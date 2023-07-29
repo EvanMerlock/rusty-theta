@@ -137,7 +137,7 @@ impl VM {
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Int(l+r)),
                         (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
                             match (&*l, &*r) {
-                                (&ThetaHeapValue::Str(ref ls), &ThetaHeapValue::Str(ref rs)) => {
+                                (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(ref rs)) => {
                                     let s_val = ls.clone() + rs;
                                     let tv = self.intern_string(s_val);                              
                                     self.stack.push(tv);
@@ -206,7 +206,7 @@ impl VM {
                         (ThetaValue::Bool(l), ThetaValue::Bool(r)) => self.stack.push(ThetaValue::Bool(l==r)),
                         (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
                             match (&*l, &*r) {
-                                (&ThetaHeapValue::Str(ref ls), &ThetaHeapValue::Str(ref rs)) => self.stack.push(ThetaValue::Bool(ls==rs)),
+                                (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(rs)) => self.stack.push(ThetaValue::Bool(ls==rs)),
                             }
                         }
                         _ => panic!("invalid operands"),
@@ -223,7 +223,7 @@ impl VM {
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l>r)),
                         (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
                             match (&*l, &*r) {
-                                (&ThetaHeapValue::Str(ref ls), &ThetaHeapValue::Str(ref rs)) => self.stack.push(ThetaValue::Bool(ls>rs)),
+                                (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(rs)) => self.stack.push(ThetaValue::Bool(ls>rs)),
                             }
                         }
                         _ => panic!("invalid operands"),
@@ -240,7 +240,7 @@ impl VM {
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l<r)),
                         (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
                             match (&*l, &*r) {
-                                (&ThetaHeapValue::Str(ref ls), &ThetaHeapValue::Str(ref rs)) => self.stack.push(ThetaValue::Bool(ls<rs)),
+                                (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(rs)) => self.stack.push(ThetaValue::Bool(ls<rs)),
                             }
                         }
                         _ => panic!("invalid operands"),

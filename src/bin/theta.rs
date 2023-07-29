@@ -1,5 +1,5 @@
 use log::error;
-use theta_lang::{repl::{Repl, ReplStatus}};
+use theta_lang::repl::{Repl, ReplStatus};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();

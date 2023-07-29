@@ -1,6 +1,6 @@
 use std::{collections::{HashMap, hash_map::Entry}, rc::Rc, cell::RefCell};
 
-use crate::{bytecode::Symbol};
+use crate::bytecode::Symbol;
 
 use super::super::transformers::typeck::TypeInformation;
 

@@ -3,7 +3,7 @@ use std::{error::Error, fmt::Display};
 use log::{debug, error, trace};
 
 use super::{ASTTransformer, ASTVisitor, TransformError};
-use crate::{ast::{symbol::{ExtSymbolTable, SymbolData}, AbstractTree, InnerAbstractTree, Expression, Statement, tree::Function, Item}, lexer::token::{TokenType, Token}, parser::{ParseInfo}, bytecode::Symbol};
+use crate::{ast::{symbol::{ExtSymbolTable, SymbolData}, AbstractTree, InnerAbstractTree, Expression, Statement, tree::Function, Item}, lexer::token::{TokenType, Token}, parser::ParseInfo, bytecode::Symbol};
 
 pub struct TypeCk {
     symbol_table: ExtSymbolTable
