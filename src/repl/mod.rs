@@ -6,10 +6,11 @@
 use log::{LevelFilter, debug};
 
 
-use crate::ast::symbol::ExtSymbolTable;
-use crate::ast::transformers::typeck::TypeCk;
+use crate::ast::Item;
+use crate::ast::symbol::{ExtSymbolTable, SymbolData};
+use crate::ast::transformers::typeck::{TypeCk, TypeInformation};
 use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
-use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk, ThetaBitstream, BasicDisassembler};
+use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk, ThetaBitstream, BasicDisassembler, Symbol};
 use crate::parser::{ReplParser, ReplItem};
 use crate::{vm::VM, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}};
 
@@ -55,6 +56,9 @@ impl Repl {
                         "--functions" => {
                             debug!("Function Pool: {:#?}", self.machine.functions());
                         },
+                        "--symbols" => {
+                            debug!("Symbol Table: {:#?}", self.tbl);
+                        }
                         "--quit" | "--exit" => {
                             return Ok(ReplStatus::ReplTerminate);
                         },
@@ -112,6 +116,18 @@ impl Repl {
                     debug!("sym: {:?}", sym.borrow());
                     let type_cker = TypeCk::new(sym.clone());
                     let type_check = type_cker.transform_item(&pi)?;
+
+                    match pi {
+                        Item::Function(func) => {
+                            let mut tbl = self.tbl.borrow_mut();
+                            tbl.insert_symbol(func.name, SymbolData::Function { 
+                                return_ty: func.return_ty.clone(), 
+                                args: func.args.clone(), 
+                                fn_ty: TypeInformation::Function(Box::new(func.return_ty.clone()), func.args.into_iter().map(|x| x.ty).collect())
+                            });
+                        },
+                    };
+
                     let mut theta_func = ToByteCode.transform_item(&type_check)?;
 
                     // need to pull out constants and reloc

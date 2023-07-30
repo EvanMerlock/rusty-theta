@@ -27,7 +27,9 @@ pub enum TypeCkError {
     InvalidIfExpressionCheck(TypeInformation),
     InvalidIfBranches(TypeInformation, TypeInformation),
     InvalidPredicate(TypeInformation),
-    InvalidFunctionReturn(TypeInformation, TypeInformation)
+    InvalidFunctionReturn(TypeInformation, TypeInformation),
+    InvalidNumberFunctionArgs(usize, usize),
+    FunctionArgumentNoMatchDef(TypeInformation, TypeInformation),
 }
 
 impl Error for TypeCkError {
@@ -54,6 +56,8 @@ impl Display for TypeCkError {
             TypeCkError::InvalidIfBranches(ty_l, ty_r) => write!(f, "Type Mismatch! Primary If Body: {}, Else Body: {}", ty_l, ty_r),
             TypeCkError::InvalidPredicate(ty) => write!(f, "Type Mismatch! Expected boolean, got: {ty}"),
             TypeCkError::InvalidFunctionReturn(expected, actual) => write!(f, "Type Mismatch! Expected a function returning {}, got: {}", expected, actual),
+            TypeCkError::InvalidNumberFunctionArgs(expected, actual) => write!(f, "Invalid number of arguments for function call. Expected: {expected}, Actual: {actual}"),
+            TypeCkError::FunctionArgumentNoMatchDef(expected, actual) => write!(f, "Invalid function argument. Expected: {expected}, Actual: {actual}"),
         }
     }
 }
@@ -320,6 +324,42 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                 let body_ty = body_checked.information().ty.clone();
 
                 Ok(Expression::LoopExpression { predicate: predicate_checked, body: body_checked, information: TypeCkOutput { ty: body_ty, pi: information.clone() } })
+            },
+            Expression::Call { callee: function, args, information } => {
+                // check for function existence
+
+                // the type of this expression should be a function that takes in the given args and returns the return_ty
+                let callee_expr = self.visit_expression(function)?;
+                let callee_ty = callee_expr.information().ty.clone();
+
+                let (return_ty, fn_args) = match callee_ty {
+                    TypeInformation::Function(rty, args) => (rty, args),
+                    // TODO: do not
+                    _ => panic!("lazy panic, non-function")
+                };
+
+                // let (return_ty, fn_args) = match information.current_symbol_table.borrow().get_symbol_data(function, information.scope_depth) {
+                //     Some(SymbolData::Function { return_ty, args, fn_ty: _ }) => (return_ty, args),
+                //     Some(_) | None => todo!(),
+                // };
+
+                if fn_args.len() != args.len() {
+                    return Err(TransformError::TypeCkError(TypeCkError::InvalidNumberFunctionArgs(fn_args.len(), args.len())))
+                }
+
+                let mut actual_args = Vec::new();
+
+                for (idx, arg) in args.iter().enumerate() {
+                    let annotated_arg = self.visit_expression(arg)?;
+
+                    if fn_args[idx] != annotated_arg.information().ty {
+                        return Err(TransformError::TypeCkError(TypeCkError::FunctionArgumentNoMatchDef(fn_args[idx].clone(), annotated_arg.information().ty.clone())))
+                    }
+
+                    actual_args.push(annotated_arg);
+                }
+
+                Ok(Expression::Call { callee: Box::new(callee_expr), args: actual_args, information: TypeCkOutput { ty: *return_ty, pi: information.clone() }})
             },
         }
     }

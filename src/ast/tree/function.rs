@@ -15,7 +15,7 @@ pub struct Function<T> where T: Debug + PartialEq {
     pub information: T,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq)]
 pub struct FunctionArg {
     pub name: Symbol,
     pub ty: TypeInformation,

@@ -1,4 +1,4 @@
-use crate::{lexer::token::Token, bytecode::Symbol};
+use crate::{lexer::token::Token, bytecode::Symbol, parser::ParseInfo};
 use std::fmt::Debug;
 
 use super::Statement;
@@ -45,6 +45,12 @@ pub enum Expression<T> where T: Debug + PartialEq {
         predicate: Option<Box<Expression<T>>>,
         body: Box<Expression<T>>,
         information: T,
+    },
+    // TODO: name will become an lvalue
+    Call {
+        callee: Box<Expression<T>>,
+        args: Vec<Expression<T>>,
+        information: T,
     }
 }
 
@@ -59,6 +65,7 @@ impl<T: Debug + PartialEq> Expression<T> {
             Expression::If { check_expression: _, body: _, else_body: _, information } => information,
             Expression::BlockExpression { statements: _, information } => information,
             Expression::LoopExpression { predicate: _, body: _, information } => information,
+            Expression::Call { callee: _, args: _, information } => information,
         }
     }
 
@@ -72,6 +79,7 @@ impl<T: Debug + PartialEq> Expression<T> {
             Expression::If { check_expression, body, else_body, information: _ } => Expression::If { check_expression: Box::new(check_expression.strip_information()), body: Box::new(body.strip_information()), else_body: else_body.map(|stmt| Box::new(stmt.strip_information())), information: () },
             Expression::BlockExpression { statements, information: _ } => { Expression::BlockExpression { statements: statements.into_iter().map(|x| x.strip_information()).collect(), information: () } },
             Expression::LoopExpression { predicate, body, information: _ } => Expression::LoopExpression { predicate: predicate.map(|x| Box::new(x.strip_information())), body: Box::new(body.strip_information()), information: () },
+            Expression::Call { callee: function, args, information: _ } => Expression::Call { callee: Box::new(function.strip_information()), args: args.into_iter().map(|x| x.strip_information()).collect(), information: () },
         }
     }
 
@@ -85,6 +93,7 @@ impl<T: Debug + PartialEq> Expression<T> {
             Expression::If { check_expression, body, else_body, information } => Expression::If { check_expression: Box::new(check_expression.strip_token_information()), body: Box::new(body.strip_token_information()), else_body: else_body.map(|stmt| Box::new(stmt.strip_token_information())), information },
             Expression::BlockExpression { statements, information } => Expression::BlockExpression { statements: statements.into_iter().map(|x| x.strip_token_information()).collect(), information },
             Expression::LoopExpression { predicate, body, information } => Expression::LoopExpression { predicate: predicate.map(|x| Box::new(x.strip_token_information())), body: Box::new(body.strip_token_information()), information },
+            Expression::Call { callee: function, args, information } => Expression::Call { callee: function, args: args.into_iter().map(|x| x.strip_token_information()).collect(), information },
         }
     }
 }

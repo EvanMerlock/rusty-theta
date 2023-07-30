@@ -147,8 +147,8 @@ impl<'a> BasicParser<'a> {
             let mut func_args = Vec::new();
 
             // read function args
-            while self.match_token([TokenType::RightParen]).is_none() {
-                let func_arg_name = self.consume_if(|ty| ty.is_ident(), "could not find function argument name")?;
+            while self.match_token([TokenType::Comma]).is_some() || self.match_token([TokenType::RightParen]).is_none() {
+                let func_arg_name = self.consume_if(|ty| ty.is_literal(), "could not find function argument name")?;
                 let func_arg_name = Symbol::new(func_arg_name)?;
 
                 self.consume(TokenType::Colon, "no colon after arg name")?;
@@ -189,17 +189,36 @@ impl<'a> BasicParser<'a> {
                 TypeInformation::None
             };
 
+            // insert into symbol table here to allow for recursion
+            self.symbol_tbl.borrow_mut().insert_symbol(func_name.clone(), SymbolData::Function { 
+                return_ty: ret_ty.clone(), 
+                args: func_args.clone(), 
+                fn_ty: TypeInformation::Function(Box::new(ret_ty.clone()), func_args.clone().iter().map(|x| x.ty.clone()).collect()) 
+            });
+
             // read block
             self.consume(TokenType::LeftBrace, "no block before function")?;
+            self.begin_scope();
+
+            // insert function vars into table here for future usage
+            for arg in func_args.iter() {
+                let sd = { self.symbol_tbl.borrow().scope_depth() };
+                // insert the variable in the slot
+                let slot = self.frame_data.borrow_mut().new_function_variable();
+                self.symbol_tbl.borrow_mut().insert_symbol(arg.name.clone(), SymbolData::LocalVariable { ty: arg.ty.clone(), scope_level: sd, slot });
+            }
+
             let block = self.block_expression()?;
+            self.end_scope()?;
 
             let func = Function {
                 args: func_args,
                 chunk: AbstractTree::expression(block.clone(), block.information().clone()),
                 name: func_name,
                 return_ty: ret_ty,
-                information: ParseInfo { scope_depth: 0, current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone() },
+                information: ParseInfo { scope_depth: self.symbol_tbl.borrow().scope_depth(), current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone() },
             };
+
 
             Ok(Item::Function(func))
         } else {
@@ -481,7 +500,28 @@ impl<'a> BasicParser<'a> {
                 information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone())
             })
         } else {
-            self.primary()
+            self.call()
+        }
+    }
+     
+    fn call(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
+        trace!("read call");
+        let lval = self.primary()?;
+        if let Some(_oper) = self.match_token([TokenType::LeftParen]) {
+            let mut args = Vec::new();
+
+            while self.match_token([TokenType::Comma]).is_some() || self.match_token([TokenType::RightParen]).is_none() {
+                let expr = self.expression()?;
+                args.push(expr);
+            }
+    
+            Ok(Expression::Call {
+                callee: Box::new(lval),
+                args,
+                information: ParseInfo { scope_depth: self.symbol_tbl.borrow().scope_depth(), current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone() },
+            })
+        } else {
+            Ok(lval)
         }
     }
 

@@ -29,6 +29,8 @@ pub enum OpCode {
     DefineLocal { offset: usize },
     GetLocal { offset: usize },
 
+    CallDirect { name_offset: usize },
+
     Noop,
     DebugPrint,
 }
@@ -59,6 +61,7 @@ impl OpCode {
             OpCode::JumpFar { offset: _ } => 1 + std::mem::size_of::<isize>(),
             OpCode::JumpFarIfFalse { offset: _ } => 1 + std::mem::size_of::<isize>(),
             OpCode::Noop => 1,
+            OpCode::CallDirect { name_offset: _ } => 2,
         }
     }
 
@@ -86,6 +89,7 @@ impl OpCode {
             OpCode::GetLocal { offset } => format!("Get local variable with offset {offset:#X}"),
             OpCode::DebugPrint => "Debug print".to_string(),
             OpCode::Noop => "Noop".to_string(),
+            OpCode::CallDirect { name_offset } => format!("Call function directly with constant name {name_offset:#X}"),
         }
     }
 
@@ -111,6 +115,7 @@ impl OpCode {
             OpCode::GetGlobal { offset: _ } => 0xC1,
             OpCode::DefineLocal { offset: _ } => 0xC2,
             OpCode::GetLocal { offset: _ } => 0xC3,
+            OpCode::CallDirect { name_offset: _ } => 0xE0,
             OpCode::DebugPrint => 0xFF,
             OpCode::Noop => 0xFD,
         }

@@ -24,6 +24,8 @@ impl ASTTransformer<TypeCkOutput> for ToByteCode {
         // TODO: insert chunk prologue here when necessary
         // should only occur on stack boundaries
         // in interpreter mode, this can happen on expression / statement bounds.
+
+        // note: this doesn't include function bounds because the CALL instruction will allocate space on the stack for params
         let local_size = tree.information().pi.frame_data.borrow().total_locals();
         let mut block_chunk = if local_size > 0 { 
             let mut block_chunk = Chunk::new();
@@ -131,26 +133,32 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     build_chunk!(OpCode::Constant { offset: 0 }; ThetaConstant::Str(s))
                 },
                 token::TokenType::Identifier(id) => {
-                    match info.pi.scope_depth {
-                        0 => {
-                            build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaConstant::Str(id))
+                    // check if ID is a function. if so, load the ID as a string into the engine.
+                    match info.pi.current_symbol_table.borrow().get_symbol_data(&Symbol::from(id.clone()), 0) {
+                        Some(SymbolData::Function { return_ty: _, args: _, fn_ty: _ }) => {
+                            build_chunk!(OpCode::Constant { offset: 0 }; ThetaConstant::Str(id))
                         },
-                        sd => {
-                            let local = info.pi.current_symbol_table.borrow().get_symbol_data(&Symbol::from(id.clone()), sd);
-                            match local {
-                                Some(SymbolData::Type { ty: _ }) => return Err(TransformError::from(ToByteCodeError::InvalidLocal(id))),
-                                // TODO: not correct. need to track globals across CUs
-                                Some(SymbolData::GlobalVariable { ty: _ }) => build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaConstant::Str(id)),
-                                Some(SymbolData::LocalVariable { ty: _, scope_level: _, slot }) => {
-                                    build_chunk!(OpCode::GetLocal { offset: slot })
-                                },
-                                Some(SymbolData::Function { return_ty: _, args: _, fn_ty: _ }) => {
-                                    // embed function / closure object
-                                    todo!()
+                        _ => match info.pi.scope_depth {
+                            0 => {
+                                build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaConstant::Str(id))
+                            },
+                            sd => {
+                                let local = info.pi.current_symbol_table.borrow().get_symbol_data(&Symbol::from(id.clone()), sd);
+                                match local {
+                                    Some(SymbolData::Type { ty: _ }) => return Err(TransformError::from(ToByteCodeError::InvalidLocal(id))),
+                                    // TODO: not correct. need to track globals across CUs
+                                    Some(SymbolData::GlobalVariable { ty: _ }) => build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaConstant::Str(id)),
+                                    Some(SymbolData::LocalVariable { ty: _, scope_level: _, slot }) => {
+                                        build_chunk!(OpCode::GetLocal { offset: slot })
+                                    },
+                                    Some(SymbolData::Function { return_ty: _, args: _, fn_ty: _ }) => {
+                                        // embed function / closure object
+                                        todo!()
+                                    }
+                                    None => return Err(TransformError::from(ToByteCodeError::NoIdentFound(id)))
                                 }
-                                None => return Err(TransformError::from(ToByteCodeError::NoIdentFound(id)))
                             }
-                        }
+                        },
                     }
                 },
                 _ => return Err(TransformError::from(ToByteCodeError::InvalidToken(format!("when expected literal: {}", literal)))),
@@ -221,11 +229,9 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
 
                 // first we emit the check block, which should leave a boolean on top of the stack
                 // then we emit the jump chunk
-
                 let combined_block = check_block.merge_chunk(jump_chunk); 
 
                 // then we emit the body chunk
-
                 let combined_block = combined_block.merge_chunk(body_block);
 
                 // then we emit a jump chunk that skips to the end of the else block if it exists
@@ -234,11 +240,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 // TODO: we are missing a POP somewhere in here.
                 // occurs when the if statement falls through and there's no else block.
 
-                
-
                 if let Some(block) = else_block {
-
-
                     let jump_size: isize = block.instruction_size() as isize;
 
                     // depending on which jump is emitted we need to add the size of the jump to the offset!!!
@@ -284,13 +286,11 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
             Expression::LoopExpression { predicate, body, information: _ } => {
                 let body_chunk = self.visit_expression(body)?;
                 
-                
                 let enc_pred = if let Some(x) = predicate {
                     self.visit_expression(x)?
                 } else {
                     Chunk::new()
                 };
-
 
                 // TODO: this might not bypass the jump_to_beginning chunk...
                 // jump_to_beginning might be jump far or jump local. we need to know the size of the pred + body here
@@ -300,8 +300,6 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     Some(_) => build_conditional_jump(jump_to_end_offset, false),
                     None => Chunk::new(),
                 };
-
-
 
                 let loop_head = enc_pred.merge_chunk(jump_to_end_chunk).merge_chunk(body_chunk);
 
@@ -313,10 +311,23 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     None => unconditional_far_jump(loop_head.instruction_size()-1, true),
                 };
 
-
-                
-
                 loop_head.merge_chunk(jump_to_beginning_chunk)
+            },
+            Expression::Call { callee: function, args, information: _ } => {
+                // first we evaluate all arguments and ensure they're on the stack
+                let mut call_chunk = Chunk::new();
+
+                for arg in args {
+                    let arg_ck = self.visit_expression(arg)?;
+                    call_chunk = call_chunk.merge_chunk(arg_ck);
+                }
+
+                // put the function on top of the stack and call
+                let callee = self.visit_expression(&function)?;
+                call_chunk = call_chunk.merge_chunk(callee);
+                let op_ck = build_chunk!(OpCode::CallDirect { name_offset: 0 });
+
+                call_chunk.merge_chunk(op_ck)
             },
         })
     }

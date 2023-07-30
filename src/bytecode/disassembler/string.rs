@@ -125,7 +125,14 @@ impl StringDisassembler {
                         &chunk[offset + 1..offset + 1 + std::mem::size_of::<isize>()]
                     ));
                     offset += 1 + std::mem::size_of::<isize>()
-                }
+                },
+                0xE0 => {
+                    readout.push_str(&format!(
+                        "Op: Call Direct (0xE0) with offset: {}\r\n",
+                        &chunk[offset + 1]
+                    ));
+                    offset += 2
+                },
                 0xFD => {
                     readout.push_str("Op: Noop (0xFD)\r\n");
                     offset += 1

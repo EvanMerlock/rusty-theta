@@ -92,8 +92,13 @@ impl<'a> Assembler for BasicAssembler<'a> {
                     self.output_file.write(&off_bytes)?
                 }
 
+                OpCode::CallDirect { name_offset } => {
+                    self.output_file.write(&[0xE0, *name_offset as u8])?
+                },
+
                 OpCode::DebugPrint => self.output_file.write(&[0xFFu8])?,
                 OpCode::Noop => self.output_file.write(&[0xFDu8])?,
+
             };
         }
         Ok(())

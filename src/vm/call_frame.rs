@@ -13,7 +13,7 @@ pub struct ThetaStack {
 
 impl ThetaStack {
     pub fn new(root_bitstream: Rc<ThetaCompiledBitstream>) -> ThetaStack {
-        ThetaStack { globals: HashMap::new(), frames: vec![ThetaCallFrame::new(root_bitstream, vec![], 0)] }
+        ThetaStack { globals: HashMap::new(), frames: vec![ThetaCallFrame::new(root_bitstream, vec![])] }
     }
 
     pub fn curr_frame(&self) -> Option<&ThetaCallFrame> {
@@ -24,8 +24,12 @@ impl ThetaStack {
         self.frames.last_mut()
     }
 
-    pub fn push_frame(&mut self, bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<ThetaValue>, locals_required: usize) {
-        self.frames.push(ThetaCallFrame::new(bitstream_ref, params, locals_required));
+    pub fn push_frame(&mut self, bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<ThetaValue>) {
+        self.frames.push(ThetaCallFrame::new(bitstream_ref, params));
+    }
+
+    pub fn push_opt_frame(&mut self, bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<Option<ThetaValue>>) {
+        self.frames.push(ThetaCallFrame::new_optional(bitstream_ref, params));
     }
 
     pub fn pop_frame(&mut self) -> Option<ThetaCallFrame> {
@@ -103,18 +107,18 @@ impl ThetaStack {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct ThetaCallFrame {
-    // In THEORY the size of params and locals is always well known by the compiler in advanced
-    // We would need a custom allocating collection in order to do this.
-    // This has extra redirection
-    params: Vec<ThetaValue>,
     rip: usize,
     // locals are uninitalized when created. we might need to make this an option and panic on fail
-    locals: Vec<Option<ThetaValue>>,
+    pub locals: Vec<Option<ThetaValue>>,
     pub bitstream: Rc<ThetaCompiledBitstream>,
 }
 
 impl ThetaCallFrame {
-    pub fn new(bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<ThetaValue>, locals_required: usize) -> ThetaCallFrame {
-        ThetaCallFrame { params, rip: 0, locals: Vec::with_capacity(locals_required), bitstream: bitstream_ref }
+    pub fn new(bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<ThetaValue>) -> ThetaCallFrame {
+        ThetaCallFrame { rip: 0, locals: params.into_iter().map(|x| Some(x)).collect(), bitstream: bitstream_ref }
+    }
+
+    pub fn new_optional(bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<Option<ThetaValue>>) -> ThetaCallFrame {
+        ThetaCallFrame { rip: 0, locals: params, bitstream: bitstream_ref }
     }
 }

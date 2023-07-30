@@ -1,6 +1,6 @@
 use std::{collections::{HashMap, hash_map::Entry}, rc::Rc, cell::RefCell};
 
-use crate::bytecode::Symbol;
+use crate::{bytecode::Symbol, ast::FunctionArg};
 
 use super::super::transformers::typeck::TypeInformation;
 
@@ -99,7 +99,7 @@ pub enum SymbolData {
     },
     Function {
         return_ty: TypeInformation,
-        args: Vec<TypeInformation>,
+        args: Vec<FunctionArg>,
         fn_ty: TypeInformation
     }
 }

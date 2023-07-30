@@ -2,7 +2,7 @@ use std::{rc::Rc, collections::HashMap};
 
 use log::{debug, error};
 
-use crate::bytecode::{CHUNK_HEADER, ThetaValue, DisassembleError, ThetaHeapValue, ThetaString, ThetaCompiledFunction, ThetaCompiledBitstream};
+use crate::{bytecode::{CHUNK_HEADER, ThetaValue, DisassembleError, ThetaHeapValue, ThetaString, ThetaCompiledFunction, ThetaCompiledBitstream}, vm::call_frame::ThetaCallFrame};
 
 use super::call_frame::ThetaStack;
 
@@ -359,6 +359,35 @@ impl VM {
                         }
                     }
                 },
+                0xE0 => {
+                    debug!("Op: Call Direct (0xE0) with offset: {:#X}", &chunk[offset+1]);
+                    // on top of the stack should be either a function object or a symbol reference
+                    let stack_top = self.stack.pop().expect("expected stack item");
+                    // let constant = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[offset+1] as usize].clone();
+
+                    // TODO: function object
+                    let func_name = match stack_top {
+                        ThetaValue::HeapValue(hv) => match hv.as_ref() {
+                            ThetaHeapValue::Str(func_name) => func_name.clone(),
+                        },
+                        _ => panic!("non-string found at constant for func call")
+                    };
+
+                    // TODO: this should throw a runtime error
+                    let func = self.function_table.get(&func_name).expect("function is not loaded");
+
+                    let stack_size: usize = func.0.args.len();
+                    let locals = &self.stack().curr_frame().expect("need call frame").locals;
+                    let params = locals[locals.len()-stack_size..].to_vec();
+
+                    self.stack.push_opt_frame(func.1.clone(), params);
+                    let ck = func.0.chunk.clone();
+                    self.execute_code(&ck)?;
+
+                    self.stack.pop_frame();
+
+                    offset += 2;
+                }
                 0xFD => {
                     debug!("Op: Noop (0xFD)");
                     offset += 1
