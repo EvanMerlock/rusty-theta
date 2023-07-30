@@ -273,13 +273,18 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 }
 
             },
-            Expression::BlockExpression { statements, information: _ } => {
+            Expression::BlockExpression { statements, information: _, final_expression } => {
                 // we are at scope_depth +1 here.
                 // we need to care about scope depth because when expressions are searched, they need to search their localized symbol table for the identifier that matches their scope depth and ID.
                 let mut block_chunk = Chunk::new();
                 for stmt in statements {
                     block_chunk = block_chunk.merge_chunk(self.visit_statement(stmt)?);
                 }
+
+                block_chunk = block_chunk.merge_chunk(match final_expression {
+                    Some(expr) => self.visit_expression(expr)?,
+                    None => Chunk::new(),
+                });
 
                 block_chunk
             },

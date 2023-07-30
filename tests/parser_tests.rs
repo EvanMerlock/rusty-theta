@@ -1,5 +1,8 @@
 use theta_lang::{
-    ast::{transformers::typeck::TypeInformation, AbstractTree, Expression, Function, Statement, FunctionArg, Item},
+    ast::{
+        transformers::typeck::TypeInformation, AbstractTree, Expression, Function, FunctionArg,
+        Item, Statement,
+    },
     bytecode::Symbol,
     lexer::{
         token::{Token, TokenType},
@@ -48,7 +51,8 @@ fn function_generated() {
                         },
                         information: ()
                     }],
-                    information: ()
+                    information: (),
+                    final_expression: None
                 },
                 ()
             ),
@@ -59,7 +63,6 @@ fn function_generated() {
         expected.strip_information().strip_token_information()
     )
 }
-
 
 #[test]
 fn function_with_args_generated() {
@@ -89,7 +92,10 @@ fn function_with_args_generated() {
 
     assert_eq!(
         Function {
-            args: vec![FunctionArg { name: Symbol::from("t"), ty: TypeInformation::String }],
+            args: vec![FunctionArg {
+                name: Symbol::from("t"),
+                ty: TypeInformation::String
+            }],
             chunk: AbstractTree::expression(
                 Expression::BlockExpression {
                     statements: vec![Statement::PrintStatement {
@@ -99,7 +105,8 @@ fn function_with_args_generated() {
                         },
                         information: ()
                     }],
-                    information: ()
+                    information: (),
+                    final_expression: None
                 },
                 ()
             ),
@@ -147,7 +154,8 @@ fn function_with_return_type_generated() {
                         },
                         information: ()
                     }],
-                    information: ()
+                    information: (),
+                    final_expression: None
                 },
                 ()
             ),

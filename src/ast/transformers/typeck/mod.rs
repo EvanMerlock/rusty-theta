@@ -296,7 +296,7 @@ impl ASTVisitor<ParseInfo> for TypeCk {
 
                 Ok(Expression::If { check_expression: Box::new(check_ty), body: Box::new(primary_body_type.clone()), else_body: else_body_type, information: TypeCkOutput { ty: primary_body_type.information().ty.clone(), pi: information.clone() } })
             },
-            Expression::BlockExpression { statements, information: info } => {
+            Expression::BlockExpression { statements, information: info, final_expression } => {
                 // is it possible for the last statement's type to carry for the block?
                 // we create a new typechecker because we need to look at the symbol table for this block.
                 let internal_typeck = TypeCk::new(info.current_symbol_table.clone());
@@ -305,7 +305,16 @@ impl ASTVisitor<ParseInfo> for TypeCk {
                     let stmt = internal_typeck.visit_statement(statement)?;
                     annotated_statements.push(stmt);
                 }
-                Ok(Expression::BlockExpression { statements: annotated_statements, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
+
+                let (block_expr_ty, final_expr) = match final_expression {
+                    Some(final_expr) => {
+                        let expr = internal_typeck.visit_expression(&final_expr)?;
+                        (expr.information().ty.clone(), Some(Box::new(expr)))
+                    },
+                    None => (TypeInformation::None, None),
+                };
+
+                Ok(Expression::BlockExpression { statements: annotated_statements, information: TypeCkOutput { ty: block_expr_ty, pi: info.clone() }, final_expression: final_expr })
             },
             Expression::LoopExpression { predicate, body, information } => {
                 let predicate_checked = if let Some(pred_body) = predicate {

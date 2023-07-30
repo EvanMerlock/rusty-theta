@@ -353,7 +353,7 @@ impl<'a> BasicParser<'a> {
             decls.push(decl);
         }
 
-        Ok(Expression::BlockExpression { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+        Ok(Expression::BlockExpression { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()), final_expression: None })
     }
 
     fn if_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
