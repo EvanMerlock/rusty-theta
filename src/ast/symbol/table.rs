@@ -80,6 +80,7 @@ impl Default for SymbolTable {
         symbol_table.insert_symbol(Symbol::from("String"), SymbolData::Type { ty: TypeInformation::String });
         symbol_table.insert_symbol(Symbol::from("Bool"), SymbolData::Type { ty: TypeInformation::Boolean });
         symbol_table.insert_symbol(Symbol::from("Float"), SymbolData::Type { ty: TypeInformation::Float });
+        symbol_table.insert_symbol(Symbol::from("None"), SymbolData::Type { ty: TypeInformation::None });
         symbol_table
     }
 }
