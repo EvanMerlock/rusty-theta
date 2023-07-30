@@ -63,7 +63,7 @@ impl VM {
                 rc
             },
         };
-        ThetaValue::HeapValue(hv)
+        ThetaValue::Pointer(hv)
     }
 
     pub fn load_bitstream(&mut self, bs: ThetaCompiledBitstream) -> Rc<ThetaCompiledBitstream> {
@@ -135,7 +135,7 @@ impl VM {
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Double(l+r)),
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Int(l+r)),
-                        (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
+                        (ThetaValue::Pointer(l), ThetaValue::Pointer(r)) => {
                             match (&*l, &*r) {
                                 (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(ref rs)) => {
                                     let s_val = ls.clone() + rs;
@@ -204,7 +204,7 @@ impl VM {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l==r)),
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l==r)),
                         (ThetaValue::Bool(l), ThetaValue::Bool(r)) => self.stack.push(ThetaValue::Bool(l==r)),
-                        (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
+                        (ThetaValue::Pointer(l), ThetaValue::Pointer(r)) => {
                             match (&*l, &*r) {
                                 (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(rs)) => self.stack.push(ThetaValue::Bool(ls==rs)),
                             }
@@ -221,7 +221,7 @@ impl VM {
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l>r)),
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l>r)),
-                        (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
+                        (ThetaValue::Pointer(l), ThetaValue::Pointer(r)) => {
                             match (&*l, &*r) {
                                 (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(rs)) => self.stack.push(ThetaValue::Bool(ls>rs)),
                             }
@@ -238,7 +238,7 @@ impl VM {
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l<r)),
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l<r)),
-                        (ThetaValue::HeapValue(l), ThetaValue::HeapValue(r)) => {
+                        (ThetaValue::Pointer(l), ThetaValue::Pointer(r)) => {
                             match (&*l, &*r) {
                                 (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(rs)) => self.stack.push(ThetaValue::Bool(ls<rs)),
                             }
@@ -251,7 +251,7 @@ impl VM {
                     debug!("Op: Define Global (0xC0) with offset: {:#X}", chunk[offset+1] as usize);
                     let glob = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[offset+1] as usize].clone();
                     match glob {
-                        ThetaValue::HeapValue(hv) => {
+                        ThetaValue::Pointer(hv) => {
                             match &*hv {
                                 ThetaHeapValue::Str(s) => {
                                     let sv = self.stack.peek().expect("no value on stack").clone();
@@ -268,7 +268,7 @@ impl VM {
                     debug!("Op: Read Global (0xC1)");
                     let glob = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[offset+1] as usize].clone();
                     match glob {
-                        ThetaValue::HeapValue(hv) => {
+                        ThetaValue::Pointer(hv) => {
                             match &*hv {
                                 ThetaHeapValue::Str(s) => {
                                     let v = self.stack.globals_mut().get(s.internal().as_str());
@@ -367,7 +367,7 @@ impl VM {
 
                     // TODO: function object
                     let func_name = match stack_top {
-                        ThetaValue::HeapValue(hv) => match hv.as_ref() {
+                        ThetaValue::Pointer(hv) => match hv.as_ref() {
                             ThetaHeapValue::Str(func_name) => func_name.clone(),
                         },
                         _ => panic!("non-string found at constant for func call")

@@ -22,7 +22,7 @@ pub enum ThetaValue {
     Double(f64),
     Int(i64),
     Bool(bool),
-    HeapValue(Rc<ThetaHeapValue>),
+    Pointer(Rc<ThetaHeapValue>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
