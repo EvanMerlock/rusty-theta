@@ -57,7 +57,7 @@ impl OpCode {
             OpCode::GetGlobal { offset: _ } => 2,
             OpCode::DefineLocal { offset: _ } => 2,
             OpCode::GetLocal { offset: _ } => 2,
-            OpCode::DebugPrint => 2,
+            OpCode::DebugPrint => 1,
             OpCode::JumpFar { offset: _ } => 1 + std::mem::size_of::<isize>(),
             OpCode::JumpFarIfFalse { offset: _ } => 1 + std::mem::size_of::<isize>(),
             OpCode::Noop => 1,

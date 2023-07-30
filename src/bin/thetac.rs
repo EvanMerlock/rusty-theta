@@ -1,7 +1,7 @@
 use clap::{clap_derive::ArgEnum, Parser as ClapParser};
 use log::debug;
 use std::{fs::File, io::BufReader, cell::RefCell, rc::Rc};
-use theta_lang::{bytecode::{AssembleError, Assembler, BasicAssembler, PlainTextAssembler}, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}, ast::{symbol::SymbolTable, transformers::{typeck::TypeCk, to_bytecode::ToByteCode, ASTTransformer}, Item}};
+use theta_lang::{bytecode::{AssembleError, Assembler, BasicAssembler, PlainTextAssembler}, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser, ReplParser, ReplItem}, ast::{symbol::SymbolTable, transformers::{typeck::TypeCk, to_bytecode::ToByteCode, ASTTransformer}, Item}};
 
 #[derive(ClapParser)]
 #[clap(version = "0.0.1", author = "Evan Merlock")]
@@ -53,29 +53,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut token_stream = tokens.into_iter();
     let tbl = Rc::new(RefCell::new(SymbolTable::default()));
     let parser = BasicParser::new_sym(&mut token_stream, tbl);
+    let parser = ReplParser::new(parser);
     let trees = parser.parse()?;
-    let pi = &trees[0];
-    let ast = match pi {
-        Item::Function(func) => func.chunk.clone(),
-        _ => panic!("invalid item"),
-    };
-    let sym = ast.information().current_symbol_table.clone();
-    debug!("sym: {:?}", sym.borrow());
-    let type_cker = TypeCk::new(sym);
-    let type_check = type_cker.transform_tree(&ast)?;
-    let chunk = ToByteCode.transform_tree(&type_check)?;
-    debug!("chunk: {:?}", chunk);
-
-    {
-        let mut assembler: Box<dyn Assembler<Out = Result<(), AssembleError>>> =
-            match options.assembler {
-                AssemblerImpl::Basic => Box::new(BasicAssembler::new(&mut out_file)),
-                AssemblerImpl::String => Box::new(PlainTextAssembler::new(&mut out_file)),
-            };
-        assembler.assemble_chunk(chunk)?;
+    for pi in trees {
+        write!(out_file, "==== NEW ITEM ====\r\n")?;
+        let ast = match pi {
+            ReplItem::ParserItem(Item::Function(func)) => func.chunk.clone(),
+            ReplItem::Declaration(decl) => decl.clone(),
+        };
+        let sym = ast.information().current_symbol_table.clone();
+        debug!("sym: {:?}", sym.borrow());
+        let type_cker = TypeCk::new(sym);
+        let type_check = type_cker.transform_tree(&ast)?;
+        let chunk = ToByteCode.transform_tree(&type_check)?;
+        debug!("chunk: {:?}", chunk);
+    
+        {
+            let mut assembler: Box<dyn Assembler<Out = Result<(), AssembleError>>> =
+                match options.assembler {
+                    AssemblerImpl::Basic => Box::new(BasicAssembler::new(&mut out_file)),
+                    AssemblerImpl::String => Box::new(PlainTextAssembler::new(&mut out_file)),
+                };
+            assembler.assemble_chunk(chunk)?;
+        }
+    
+        out_file.flush()?;
     }
 
-    out_file.flush()?;
 
     Ok(())
 }

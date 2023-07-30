@@ -306,9 +306,10 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 // removing jump optimization to ensure size is known
                 // size = 5
                 // -1 to account for fact that we are starting at n-1 offset technically
+                // TODO: is -1 just wrong?
                 let jump_to_beginning_chunk: Chunk = match predicate {
                     Some(_) => unconditional_far_jump(loop_head.instruction_size()-1, true),
-                    None => unconditional_far_jump(loop_head.instruction_size()-1, true),
+                    None => unconditional_far_jump(loop_head.instruction_size(), true),
                 };
 
                 loop_head.merge_chunk(jump_to_beginning_chunk)
