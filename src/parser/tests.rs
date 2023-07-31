@@ -7,9 +7,8 @@ macro_rules! define_parse_test {
             use crate::ast::AbstractTree;
             use super::BasicParser;
             let input = $input;
-            let mut iter = input.into_iter();
             {
-                let mut parser = BasicParser::new(&mut iter);
+                let mut parser = BasicParser::new(&input);
 
                 let actual_out = parser.declaration();
     
@@ -28,9 +27,8 @@ macro_rules! define_parse_fail_test {
         fn $test_name() {
             use super::{Parser, BasicParser};
             let input = $input;
-            let mut iter = input.into_iter();
             {
-                let parser = BasicParser::new(&mut iter);
+                let parser = BasicParser::new(&input);
 
                 let actual_out = parser.parse();
     

@@ -6,7 +6,8 @@ use super::{Parser, ParseInfo, ParseError};
 use crate::lexer::token::{Token, TokenType};
 
 pub struct BasicParser<'a> {
-    tokens: Peekable<&'a mut dyn Iterator<Item = Token>>,
+    tokens: &'a [Token],
+    offset: usize,
     symbol_tbl: ExtSymbolTable,
     root_symbol_tbl: ExtSymbolTable,
     frame_data: ExtFrameData,
@@ -20,23 +21,25 @@ pub struct BasicParser<'a> {
 
 // TODO: split up tokens that are operators into operator type by expression type.
 impl<'a> BasicParser<'a> {
-    pub fn new(token_stream: &'a mut dyn Iterator<Item = Token>) -> BasicParser<'a> {
+    pub fn new(token_stream: &'a [Token]) -> BasicParser<'a> {
         let symbol_table = Rc::new(RefCell::new(SymbolTable::default()));
         let frame_data: Rc<RefCell<FrameData>> = Rc::new(RefCell::new(FrameData::new()));
 
         BasicParser {
-            tokens: token_stream.peekable(),
+            tokens: token_stream,
+            offset: 0,
             symbol_tbl: symbol_table.clone(),
             root_symbol_tbl: symbol_table,
             frame_data,
         }
     }
 
-    pub fn new_sym(token_stream: &'a mut dyn Iterator<Item = Token>, sym: ExtSymbolTable) -> BasicParser<'a> {
+    pub fn new_sym(token_stream: &'a [Token], sym: ExtSymbolTable) -> BasicParser<'a> {
         let frame_data: Rc<RefCell<FrameData>> = Rc::new(RefCell::new(FrameData::new()));
 
         BasicParser { 
-            tokens: token_stream.peekable(), 
+            tokens: token_stream,
+            offset: 0,
             symbol_tbl: sym.clone(),
             root_symbol_tbl: sym,
             frame_data,
@@ -54,11 +57,19 @@ impl<'a> BasicParser<'a> {
     }
 
     fn advance(&mut self) -> Option<Token> {
-        self.tokens.next()
+        match self.tokens.get(self.offset) {
+            Some(tok) => {
+                self.offset += 1;
+                Some(tok.clone())
+            },
+            None => {
+                None
+            },
+        }
     }
 
     pub fn peek(&mut self) -> Option<&Token> {
-        self.tokens.peek()
+        self.tokens.get(self.offset)
     }
 
     pub fn is_at_end(&mut self) -> bool {

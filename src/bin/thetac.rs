@@ -50,9 +50,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let lexer = BasicLexer::new(&mut characters);
     let tokens = lexer.lex()?;
-    let mut token_stream = tokens.into_iter();
     let tbl = Rc::new(RefCell::new(SymbolTable::default()));
-    let parser = BasicParser::new_sym(&mut token_stream, tbl);
+    let parser = BasicParser::new_sym(&tokens, tbl);
     let parser = ReplParser::new(parser);
     let trees = parser.parse()?;
     for pi in trees {

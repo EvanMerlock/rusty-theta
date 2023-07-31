@@ -29,8 +29,7 @@ fn function_generated() {
 
     let tokens = lexer.lex().expect("failed to get tokens");
 
-    let mut tokens = tokens.into_iter();
-    let parser = BasicParser::new(&mut tokens);
+    let parser = BasicParser::new(&tokens);
 
     let item = parser.parse().expect("failed to parse");
 
@@ -78,8 +77,7 @@ fn function_with_args_generated() {
 
     let tokens = lexer.lex().expect("failed to get tokens");
 
-    let mut tokens = tokens.into_iter();
-    let parser = BasicParser::new(&mut tokens);
+    let parser = BasicParser::new(&tokens);
 
     let item = parser.parse().expect("failed to parse");
 
@@ -132,8 +130,7 @@ fn function_with_return_type_generated() {
 
     let tokens = lexer.lex().expect("failed to get tokens");
 
-    let mut tokens = tokens.into_iter();
-    let parser = BasicParser::new(&mut tokens);
+    let parser = BasicParser::new(&tokens);
 
     let item = parser.parse().expect("failed to parse");
 

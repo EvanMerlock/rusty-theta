@@ -42,9 +42,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let lexer = BasicLexer::new(&mut iter);
 
     let tokens = lexer.lex()?;
-    let mut tok_stream = tokens.into_iter();
 
-    let parser = BasicParser::new(&mut tok_stream);
+    let parser = BasicParser::new(&tokens);
     let pi = parser.parse()?;
 
     for item in pi {

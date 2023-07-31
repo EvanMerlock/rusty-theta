@@ -70,8 +70,7 @@ impl Repl {
                 let mut chars = valid_line.chars();
                 let lexer = BasicLexer::new(&mut chars);
                 let tokens = lexer.lex()?;
-                let mut token_stream = tokens.into_iter();
-                let parser = BasicParser::new_sym(&mut token_stream, self.tbl.clone());
+                let parser = BasicParser::new_sym(&tokens, self.tbl.clone());
                 let parser = ReplParser::new(parser);
                 let trees = parser.parse()?;
 
