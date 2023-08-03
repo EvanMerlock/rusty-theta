@@ -56,26 +56,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let trees = parser.parse()?;
     for pi in trees {
         write!(out_file, "==== NEW ITEM ====\r\n")?;
-        let ast = match pi {
-            ReplItem::ParserItem(Item::Function(func)) => func.chunk.clone(),
-            ReplItem::Declaration(decl) => decl.clone(),
+        match pi {
+            ReplItem::ParserItem(item) => {
+                let sym = item.information().current_symbol_table.clone();
+                debug!("sym: {:?}", sym.borrow());
+                let type_cker = TypeCk::new(sym);
+                let type_check = type_cker.transform_item(&item)?;
+                let thefunc = ToByteCode.transform_item(&type_check)?;
+                debug!("item: {:?}", thefunc);
+            
+                {
+                    let mut assembler: Box<dyn Assembler<Out = Result<(), AssembleError>>> =
+                        match options.assembler {
+                            AssemblerImpl::Basic => Box::new(BasicAssembler::new(&mut out_file)),
+                            AssemblerImpl::String => Box::new(PlainTextAssembler::new(&mut out_file)),
+                        };
+                    assembler.assemble_chunk(thefunc.chunk)?;
+                }
+            },
+            ReplItem::Declaration(decl) => {
+                let sym = decl.information().current_symbol_table.clone();
+                debug!("sym: {:?}", sym.borrow());
+                let type_cker = TypeCk::new(sym);
+                let type_check = type_cker.transform_tree(&decl)?;
+                let chunk = ToByteCode.transform_tree(&type_check)?;
+                debug!("chunk: {:?}", chunk);
+            
+                {
+                    let mut assembler: Box<dyn Assembler<Out = Result<(), AssembleError>>> =
+                        match options.assembler {
+                            AssemblerImpl::Basic => Box::new(BasicAssembler::new(&mut out_file)),
+                            AssemblerImpl::String => Box::new(PlainTextAssembler::new(&mut out_file)),
+                        };
+                    assembler.assemble_chunk(chunk)?;
+                }
+            },
         };
-        let sym = ast.information().current_symbol_table.clone();
-        debug!("sym: {:?}", sym.borrow());
-        let type_cker = TypeCk::new(sym);
-        let type_check = type_cker.transform_tree(&ast)?;
-        let chunk = ToByteCode.transform_tree(&type_check)?;
-        debug!("chunk: {:?}", chunk);
-    
-        {
-            let mut assembler: Box<dyn Assembler<Out = Result<(), AssembleError>>> =
-                match options.assembler {
-                    AssemblerImpl::Basic => Box::new(BasicAssembler::new(&mut out_file)),
-                    AssemblerImpl::String => Box::new(PlainTextAssembler::new(&mut out_file)),
-                };
-            assembler.assemble_chunk(chunk)?;
-        }
-    
+
         out_file.flush()?;
     }
 

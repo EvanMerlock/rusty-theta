@@ -1,4 +1,4 @@
-use std::{fmt, error::Error};
+use std::{fmt, error::Error, rc::Rc};
 
 use log::debug;
 
@@ -204,7 +204,7 @@ impl ThetaFileWalker {
 
     }
 
-    fn walk_chunk(&mut self, chunk: &[u8]) -> Result<(usize, Vec<u8>), FileVisitError> {
+    fn walk_chunk(&mut self, chunk: &[u8]) -> Result<(usize, Rc<Vec<u8>>), FileVisitError> {
         debug!("-- BEGIN CHUNK --");
 
         assert!(chunk[0..8] == CHUNK_HEADER);
@@ -212,6 +212,7 @@ impl ThetaFileWalker {
 
         debug!("chunk size: {chunk_size}");
 
-        Ok((chunk_size, chunk[0..15+chunk_size].to_vec()))
+
+        Ok((chunk_size, Rc::new(chunk[0..=15+chunk_size].to_vec())))
     }
 }

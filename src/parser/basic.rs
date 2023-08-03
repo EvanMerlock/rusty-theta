@@ -334,8 +334,12 @@ impl<'a> BasicParser<'a> {
     fn expression_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         trace!("read expression statement");
         let expression = self.expression()?;
-        self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
-        Ok(Statement::ExpressionStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+        if let Some(_tok) = self.match_token([TokenType::Semicolon]) {
+            Ok(Statement::ExpressionStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+        } else {
+            trace!("read partial");
+            Ok(Statement::Partial { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+        }
     }
 
     fn expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
@@ -360,7 +364,20 @@ impl<'a> BasicParser<'a> {
         trace!("read block");
         let mut decls = Vec::new();
         while self.match_token([TokenType::RightBrace, TokenType::Eof]).is_none() {
+            // TODO:
+            // Solution to the declaration problem: Differentiate between ExpressionStatements and normal Expressions in Statement context
+            // https://github.com/rust-lang/rust/blob/master/compiler/rustc_ast/src/ast.rs#L1011
+            // Differentate between Semi and Expr like Rust does
+            // final_expression is a Statement that MUST carry the "Expression" type
+            // if the last declaration in the sequence does not match this type, it can stay in the decl list
             let decl = self.declaration()?;
+
+            if let Statement::Partial { expression: expr, information: _ } = &decl {
+                // partials can only occur at the end of a block expression.
+                self.consume(TokenType::RightBrace, "Expected '}' after block expression conclusion")?;
+                return Ok(Expression::BlockExpression { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()), final_expression: Some(Box::new(expr.clone())) });
+            }
+
             decls.push(decl);
         }
 

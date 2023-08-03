@@ -412,6 +412,11 @@ impl ASTVisitor<ParseInfo> for TypeCk {
 
                 Ok(Statement::VarStatement { ident: ident.clone(), init: aug_expr, information: TypeCkOutput { ty: TypeInformation::None, pi: info.clone() } })
             },
+            Statement::Partial { expression, information } => {
+                let aug_expr = self.visit_expression(expression)?;
+                let ty = aug_expr.information().ty.clone();
+                Ok(Statement::ExpressionStatement { expression: aug_expr, information: TypeCkOutput { ty, pi: information.clone() } })
+            },
         }
     }
 

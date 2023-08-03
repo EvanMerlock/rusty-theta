@@ -4,10 +4,12 @@
 // rather than just a simple u8 seq in a chunk
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum OpCode {
+    ReturnVoid,
     Return,
     Constant { offset: usize },
     Push { size: usize },
     Pop,
+
     Add,
     Subtract,
     Multiply,
@@ -15,7 +17,9 @@ pub enum OpCode {
     Negate,
     Equal,
     GreaterThan,
+    GreaterEqual,
     LessThan,
+    LessEqual,
 
     JumpLocal { offset: i8 },
     JumpLocalIfFalse { offset: i8 },
@@ -39,7 +43,7 @@ impl OpCode {
     /// The size of the OpCode in bytes when assembled to disk, in bytes
     pub fn size(&self) -> usize {
         match self {
-            OpCode::Return => 1,
+            OpCode::ReturnVoid => 1,
             OpCode::Constant { offset: _ } => 2,
             OpCode::Push { size: _ } => 1 + std::mem::size_of::<usize>(),
             OpCode::Pop => 1,
@@ -62,12 +66,15 @@ impl OpCode {
             OpCode::JumpFarIfFalse { offset: _ } => 1 + std::mem::size_of::<isize>(),
             OpCode::Noop => 1,
             OpCode::CallDirect { name_offset: _ } => 2,
+            OpCode::Return => 1,
+            OpCode::GreaterEqual => 1,
+            OpCode::LessEqual => 1,
         }
     }
 
     pub fn human_readable(&self) -> String {
         match self {
-            OpCode::Return => "Return".to_string(),
+            OpCode::ReturnVoid => "Return void".to_string(),
             OpCode::Constant { offset } => format!("Constant with offset {offset:#X}"),
             OpCode::Push { size } => format!("Push with size {size:#X}"),
             OpCode::Pop => "Pop".to_string(),
@@ -90,12 +97,16 @@ impl OpCode {
             OpCode::DebugPrint => "Debug print".to_string(),
             OpCode::Noop => "Noop".to_string(),
             OpCode::CallDirect { name_offset } => format!("Call function directly with constant name {name_offset:#X}"),
+            OpCode::Return => "Return".to_string(),
+            OpCode::GreaterEqual => "Greater Than Or Equal To".to_string(),
+            OpCode::LessEqual => "Less Than Or Equal To".to_string(),
         }
     }
 
     pub fn as_hexcode(&self) -> usize {
         match self {
-            OpCode::Return => 0x0,
+            OpCode::ReturnVoid => 0x0,
+            OpCode::Return => 0xF0,
             OpCode::Constant { offset: _ } => 0x1,
             OpCode::Push { size: _ } => 0x2,
             OpCode::Pop => 0x3,
@@ -118,6 +129,8 @@ impl OpCode {
             OpCode::CallDirect { name_offset: _ } => 0xE0,
             OpCode::DebugPrint => 0xFF,
             OpCode::Noop => 0xFD,
+            OpCode::GreaterEqual => 0xA1,
+            OpCode::LessEqual => 0xB1,
         }
     }
 

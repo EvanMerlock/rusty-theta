@@ -3,6 +3,8 @@
 
 
 
+use std::rc::Rc;
+
 use log::{LevelFilter, debug};
 
 
@@ -10,8 +12,9 @@ use crate::ast::Item;
 use crate::ast::symbol::{ExtSymbolTable, SymbolData};
 use crate::ast::transformers::typeck::{TypeCk, TypeInformation};
 use crate::ast::transformers::{to_bytecode::ToByteCode, ASTTransformer};
-use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk, ThetaBitstream, BasicDisassembler, Symbol};
+use crate::bytecode::{BasicAssembler, Assembler, Disassembler, Chunk, ThetaBitstream, BasicDisassembler, Symbol, OpCode};
 use crate::parser::{ReplParser, ReplItem};
+use crate::vm::ThetaCallFrame;
 use crate::{vm::VM, lexer::{BasicLexer, Lexer}, parser::{BasicParser, Parser}};
 
 // TODO: move REPL to using a direct to instruction assembler. Then we don't need the disassembly step.
@@ -36,7 +39,7 @@ impl Repl {
 
     pub fn line(&mut self, valid_line: String) -> Result<ReplStatus, Box<dyn std::error::Error>> {
                 // CONVERT LINE TO CHUNKS
-                if valid_line.starts_with("--") && log::max_level() == LevelFilter::Debug {
+                if valid_line.starts_with("--") && log::max_level() >= LevelFilter::Debug {
                     match valid_line.as_str().trim_end() {
                         "--stack" => {
                             debug!("Stack: {:?}", self.machine.stack());
@@ -58,7 +61,10 @@ impl Repl {
                         },
                         "--symbols" => {
                             debug!("Symbol Table: {:#?}", self.tbl);
-                        }
+                        },
+                        "--bitstreams" => {
+                            debug!("Bitstreams: {:#?}", self.machine.bitstreams())
+                        },
                         "--quit" | "--exit" => {
                             return Ok(ReplStatus::ReplTerminate);
                         },
@@ -81,6 +87,11 @@ impl Repl {
                     self.repl_item(item, &mut bitstream, &mut chunk)?;
                 }
 
+                if !chunk.instructions().is_empty() {
+                    // append a return void to the chunk
+                    chunk.write_to_chunk(OpCode::ReturnVoid);
+                }
+
                 // compile bitstream 
                 
                 let mut compiled_bitstream = Vec::new();
@@ -92,7 +103,7 @@ impl Repl {
                 let mut intern_fn = |x| self.machine.intern_string(x);
                 let mut basic_diassembler = BasicDisassembler::new(&mut intern_fn);
                 let comp_bs = basic_diassembler.disassemble(&compiled_bitstream)?;
-                self.machine.load_bitstream(comp_bs);
+                let loaded_bs = self.machine.load_bitstream(comp_bs);
                 
 
                 if !chunk.instructions().is_empty() {
@@ -100,9 +111,12 @@ impl Repl {
                     let mut compiled_chunk = Vec::new();
                     let mut basic_assembler = BasicAssembler::new(&mut compiled_chunk);
                     basic_assembler.assemble_chunk(chunk)?;
+
+                    // do the magic stack frame thing
+                    self.machine.push_frame(ThetaCallFrame { rip: 0, locals: vec![], bitstream: loaded_bs, chunk: Rc::new(compiled_chunk) });
     
                     // execute chunk
-                    self.machine.execute_code(&compiled_chunk)?;
+                    self.machine.execute_code()?;
                 }
 
                 Ok(ReplStatus::ReplOk)

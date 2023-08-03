@@ -19,6 +19,11 @@ pub enum Statement<T> where T: Debug + PartialEq {
         init: Expression<T>,
         information: T,
     },
+    /// Only necessary for block expression
+    Partial {
+        expression: Expression<T>,
+        information: T
+    },
 }
 
 impl<T: Debug + PartialEq> Statement<T> {
@@ -27,6 +32,7 @@ impl<T: Debug + PartialEq> Statement<T> {
             Statement::ExpressionStatement { expression: _, information } => information,
             Statement::PrintStatement { information, expression: _ } => information,
             Statement::VarStatement { ident: _, init: _, information } => information,
+            Statement::Partial { expression: _, information } => information,
         }
     }
 
@@ -35,6 +41,7 @@ impl<T: Debug + PartialEq> Statement<T> {
             Statement::ExpressionStatement { expression, information: _ } => Statement::ExpressionStatement { expression: expression.strip_information(), information: () },
             Statement::PrintStatement { expression, information: _ } => Statement::PrintStatement { expression: expression.strip_information(), information: () },
             Statement::VarStatement { ident, init, information: _ } => Statement::VarStatement { ident, init: init.strip_information(), information: () },
+            Statement::Partial { expression, information: _ } => Statement::Partial { expression: expression.strip_information(), information: () },
         }
     }
 
@@ -43,6 +50,7 @@ impl<T: Debug + PartialEq> Statement<T> {
             Statement::ExpressionStatement { expression, information } => Statement::ExpressionStatement { expression: expression.strip_token_information(), information },
             Statement::PrintStatement { expression, information } => Statement::PrintStatement { expression: expression.strip_token_information(), information },
             Statement::VarStatement { ident, init, information } => Statement::VarStatement { ident, init: init.strip_token_information(), information },
+            Statement::Partial { expression, information } => Statement::Partial { expression: expression.strip_token_information(), information: information },
         }
     }
 }

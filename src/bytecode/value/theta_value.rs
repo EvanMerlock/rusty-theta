@@ -88,7 +88,7 @@ pub struct ThetaFunction {
 #[derive(Debug, Clone)]
 pub struct ThetaCompiledFunction {
     pub args: Vec<ThetaFuncArg>,
-    pub chunk: Vec<u8>,
+    pub chunk: Rc<Vec<u8>>,
     pub name: ThetaString,
     pub return_ty: TypeInformation,
 }

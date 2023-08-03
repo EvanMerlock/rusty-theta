@@ -21,7 +21,7 @@ pub struct VM {
 impl VM {
     pub fn new() -> VM {
         VM {
-            stack: ThetaStack::new(Rc::new(ThetaCompiledBitstream::new())),
+            stack: ThetaStack::new(),
             strings: HashMap::new(),
             heap: Vec::new(),
             loaded_bitstreams: vec![],
@@ -53,6 +53,10 @@ impl VM {
         &self.function_table
     }
 
+    pub fn bitstreams(&self) -> &Vec<Rc<ThetaCompiledBitstream>> {
+        &self.loaded_bitstreams
+    }
+
     pub fn intern_string(&mut self, s_val: ThetaString) -> ThetaValue {
         let hv = match self.strings.get(&s_val) {
             Some(rc) => rc.clone(),
@@ -75,38 +79,45 @@ impl VM {
             self.function_table.insert(func.name.clone(), (func.clone(), loaded_bs.clone()));
         }
 
-        self.stack.set_bitstream(loaded_bs.clone());
+        // self.stack.set_bitstream(loaded_bs.clone());
         loaded_bs
+    }
+
+    pub fn push_frame(&mut self, sf: ThetaCallFrame) {
+        self.stack.push_raw_frame(sf);
     }
 }
 
 impl VM {
-    pub fn execute_code(&mut self, chunk: &[u8]) -> Result<(), DisassembleError> {
-        let mut offset: usize = 8;
-
-        debug!("chunk: {:X?}", chunk);
-
-        // assert chunk header
-        assert!(chunk[0..8] == CHUNK_HEADER);
-        
-        debug!("=== BEGIN CHUNK ===");
-
-        let chunk_size: usize = usize::from_le_bytes(chunk[offset..offset+8].try_into().expect("could not get chunk size"));
-        debug!("chunk size: {chunk_size}");
-
-        offset += 8;
-
-
-        debug!("-- BEGIN INSTRUCTIONS --");
+    pub fn execute_code(&mut self) -> Result<(), DisassembleError> {
+        let (mut chunk, mut offset) = self.page_chunk();
 
         while offset < chunk.len() {
             // read into chunk
             match chunk[offset] {
                 0x0 => { 
-                    debug!("Op: Return (0x0)"); 
-                    println!("{:?}", self.stack.pop()); 
-                    offset += 1 
+                    debug!("Op: Void Return (0x0)");
+                    // correct offset and load chunk
+                    offset = self.stack.pop_frame().expect("expected stack frame").rip;
+                    // end control
+                    match self.stack().curr_frame() {
+                        Some(frame) => chunk = frame.chunk.clone(),
+                        None => return Ok(()),
+                    };
                 },
+                0xF0 => {
+                    debug!("Op: Return (0xF0)");
+                    let sv = self.stack.pop().expect("expected value on top of stack for return");
+                    debug!("{:?}", sv);
+                    // correct offset and load chunk
+                    offset = self.stack.pop_frame().expect("expected stack frame").rip;
+                    match self.stack().curr_frame() {
+                        Some(frame) => chunk = frame.chunk.clone(),
+                        None => return Ok(()),
+                    };
+                    // load return val onto the stack
+                    self.stack.curr_frame_mut().expect("expected stack frame").locals.push(Some(sv));
+                }
                 0x1 => { 
                     debug!("Op: Constant (0x1) with offset: {:#X}", &chunk[offset+1]); 
                     let constant = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[offset+1] as usize].clone();
@@ -230,6 +241,23 @@ impl VM {
                     };
                     offset += 1
                 },
+                0xA1 => {
+                    debug!("Op: GTE (0xA1)");
+                    let right = self.stack.pop().expect("failed to grab value off stack");
+                    let left = self.stack.pop().expect("failed to grab value off stack");
+
+                    match (left, right) {
+                        (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l>=r)),
+                        (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l>=r)),
+                        (ThetaValue::Pointer(l), ThetaValue::Pointer(r)) => {
+                            match (&*l, &*r) {
+                                (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(rs)) => self.stack.push(ThetaValue::Bool(ls>rs)),
+                            }
+                        }
+                        _ => panic!("invalid operands"),
+                    };
+                    offset += 1
+                },
                 0xB => {
                     debug!("Op: LT (0xB)");
                     let right = self.stack.pop().expect("failed to grab value off stack");
@@ -238,6 +266,23 @@ impl VM {
                     match (left, right) {
                         (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l<r)),
                         (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l<r)),
+                        (ThetaValue::Pointer(l), ThetaValue::Pointer(r)) => {
+                            match (&*l, &*r) {
+                                (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(rs)) => self.stack.push(ThetaValue::Bool(ls<rs)),
+                            }
+                        }
+                        _ => panic!("invalid operands"),
+                    };
+                    offset += 1
+                },
+                0xB1 => {
+                    debug!("Op: LTE (0xB1)");
+                    let right = self.stack.pop().expect("failed to grab value off stack");
+                    let left = self.stack.pop().expect("failed to grab value off stack");
+
+                    match (left, right) {
+                        (ThetaValue::Double(l), ThetaValue::Double(r)) => self.stack.push(ThetaValue::Bool(l<=r)),
+                        (ThetaValue::Int(l), ThetaValue::Int(r)) => self.stack.push(ThetaValue::Bool(l<=r)),
                         (ThetaValue::Pointer(l), ThetaValue::Pointer(r)) => {
                             match (&*l, &*r) {
                                 (ThetaHeapValue::Str(ls), ThetaHeapValue::Str(rs)) => self.stack.push(ThetaValue::Bool(ls<rs)),
@@ -282,13 +327,13 @@ impl VM {
                     offset += 2
                 },
                 0xC2 => { 
-                    debug!("Op: Define Local (0xC0) with offset: {:#X}", chunk[offset+1] as usize);
+                    debug!("Op: Define Local (0xC2) with offset: {:#X}", chunk[offset+1] as usize);
                     let li = chunk[offset+1] as usize;
                     self.stack.set_local(li);
                     offset += 2
                 },
                 0xC3 => { 
-                    debug!("Op: Read Local (0xC1) with offset: {:#X}", chunk[offset+1] as usize);
+                    debug!("Op: Read Local (0xC3) with offset: {:#X}", chunk[offset+1] as usize);
                     let li = chunk[offset+1] as usize;
                     self.stack.push(self.stack.get_local(li).expect("local does not exist when it should").clone());
                     offset += 2
@@ -377,16 +422,16 @@ impl VM {
                     let func = self.function_table.get(&func_name).expect("function is not loaded");
 
                     let stack_size: usize = func.0.args.len();
-                    let locals = &self.stack().curr_frame().expect("need call frame").locals;
-                    let params = locals[locals.len()-stack_size..].to_vec();
-
-                    self.stack.push_opt_frame(func.1.clone(), params);
-                    let ck = func.0.chunk.clone();
-                    self.execute_code(&ck)?;
-
-                    self.stack.pop_frame();
+                    let locals = &mut self.stack.curr_frame_mut().expect("need call frame").locals;
+                    // cut out the params from the current stack
+                    let params = locals.split_off(locals.len()-stack_size);
 
                     offset += 2;
+                    self.stack.push_opt_frame(offset, func.1.clone(), func.0.chunk.clone(), params);
+                    // let ck = func.0.chunk.clone();
+                    // self.execute_code(&ck)?;
+                    // self.stack.pop_frame();
+                    (chunk, offset) = self.page_chunk();
                 }
                 0xFD => {
                     debug!("Op: Noop (0xFD)");
@@ -406,6 +451,30 @@ impl VM {
         }
 
         Ok(())
+    }
+
+    #[inline(always)]
+    fn page_chunk(&mut self) -> (Rc<Vec<u8>>, usize) {
+        let chunk = self.stack.curr_frame().expect("no frame").chunk.clone();
+        let mut offset = 0;
+
+        debug!("chunk: {:X?}", chunk);
+
+        // assert chunk header
+        assert!(chunk[0..8] == CHUNK_HEADER);
+
+        offset += 8;
+        
+        debug!("=== BEGIN CHUNK ===");
+
+        let chunk_size: usize = usize::from_le_bytes(chunk[offset..offset+8].try_into().expect("could not get chunk size"));
+        debug!("chunk size: {chunk_size}");
+
+        offset += 8;
+
+        debug!("-- BEGIN INSTRUCTIONS --");
+
+        (chunk, offset)
     }
 }
 

@@ -32,7 +32,11 @@ impl StringDisassembler {
             // read into chunk
             match chunk[offset] {
                 0x0 => {
-                    readout.push_str("Op: Return (0x0)\r\n");
+                    readout.push_str("Op: Return Void (0x0)\r\n");
+                    offset += 1
+                },
+                0xF0 => {
+                    readout.push_str("Op: Return (0xF0)\r\n");
                     offset += 1
                 }
                 0x1 => {
@@ -79,9 +83,17 @@ impl StringDisassembler {
                 0xA => {
                     readout.push_str("Op: GT (0xA)\r\n");
                     offset += 1
+                },
+                0xA1 => {
+                    readout.push_str("Op: GTE (0xA1)\r\n");
+                    offset += 1
                 }
                 0xB => {
                     readout.push_str("Op: LT (0xB)\r\n");
+                    offset += 1
+                },
+                0xB1 => {
+                    readout.push_str("Op: LTE (0xB1)\r\n");
                     offset += 1
                 }
                 0xC0 => {

@@ -7,7 +7,7 @@ use crate::ast::{Expression, Statement, AbstractTree, InnerAbstractTree, Item, F
 use crate::bytecode::{Chunk, OpCode, ThetaConstant, Symbol, ThetaFunction, ThetaFuncArg, ThetaString};
 use crate::{build_chunk, lexer::token};
 
-use super::typeck::TypeCkOutput;
+use super::typeck::{TypeCkOutput, TypeInformation};
 use super::{ASTTerminator, ASTTransformer, TransformError};
 
 pub struct ToByteCode;
@@ -51,7 +51,15 @@ impl ASTTransformer<TypeCkOutput> for ToByteCode {
     fn transform_item(&self, item: &Item<TypeCkOutput>) -> Result<Self::ItemOut, TransformError> {
         match item {
             Item::Function(func) => {
-                let ck = self.transform_tree(&func.chunk)?;
+                // Insert return opcode here
+                let mut ck = self.transform_tree(&func.chunk)?;
+
+                // Need to check return ty of func
+                ck = match func.return_ty {
+                    TypeInformation::None => ck.merge_chunk(build_chunk!(OpCode::ReturnVoid)),
+                    _ => ck.merge_chunk(build_chunk!(OpCode::Return)),
+                };
+
                 let func_name = ThetaString::from(func.name.clone());
 
                 let mut theta_func_args = Vec::new();
@@ -96,9 +104,9 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     token::TokenType::Slash => build_chunk!(OpCode::Divide),
                     token::TokenType::Star => build_chunk!(OpCode::Multiply),
                     token::TokenType::Less => build_chunk!(OpCode::LessThan),
-                    token::TokenType::LessEqual => build_chunk!(OpCode::Add),
+                    token::TokenType::LessEqual => build_chunk!(OpCode::LessEqual),
                     token::TokenType::Greater => build_chunk!(OpCode::GreaterThan),
-                    token::TokenType::GreaterEqual => build_chunk!(OpCode::Add),
+                    token::TokenType::GreaterEqual => build_chunk!(OpCode::GreaterEqual),
                     token::TokenType::EqualEqual => build_chunk!(OpCode::Equal),
                     token::TokenType::BangEqual => build_chunk!(OpCode::Equal, OpCode::Negate),
                     _ => return Err(TransformError::from(ToByteCodeError::InvalidToken(format!("in binary precedence: {}", operator)))),
@@ -327,11 +335,18 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 }
 
                 // put the function on top of the stack and call
-                let callee = self.visit_expression(&function)?;
+                let callee = self.visit_expression(function)?;
                 call_chunk = call_chunk.merge_chunk(callee);
                 let op_ck = build_chunk!(OpCode::CallDirect { name_offset: 0 });
 
-                call_chunk.merge_chunk(op_ck)
+                call_chunk = call_chunk.merge_chunk(op_ck);
+
+                // pop func args off of stack
+                // for _ in 0..args.len() {
+                //     call_chunk = call_chunk.merge_chunk(build_chunk!(OpCode::Pop))
+                // }
+
+                call_chunk
             },
         })
     }
@@ -388,6 +403,10 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                         }
                     },
                 }
+            },
+            Statement::Partial { expression, information: _ } => {
+                // We must be very careful here. Partials can screw up the stack
+                self.visit_expression(expression)
             },
         }
     }

@@ -12,24 +12,28 @@ pub struct ThetaStack {
 }
 
 impl ThetaStack {
-    pub fn new(root_bitstream: Rc<ThetaCompiledBitstream>) -> ThetaStack {
-        ThetaStack { globals: HashMap::new(), frames: vec![ThetaCallFrame::new(root_bitstream, vec![])] }
+    pub fn new() -> ThetaStack {
+        ThetaStack { globals: HashMap::new(), frames: vec![] }
     }
 
     pub fn curr_frame(&self) -> Option<&ThetaCallFrame> {
         self.frames.last()
     }
 
-    fn curr_frame_mut(&mut self) -> Option<&mut ThetaCallFrame> {
+    pub fn curr_frame_mut(&mut self) -> Option<&mut ThetaCallFrame> {
         self.frames.last_mut()
     }
 
-    pub fn push_frame(&mut self, bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<ThetaValue>) {
-        self.frames.push(ThetaCallFrame::new(bitstream_ref, params));
+    pub fn push_raw_frame(&mut self, sf: ThetaCallFrame) {
+        self.frames.push(sf)
     }
 
-    pub fn push_opt_frame(&mut self, bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<Option<ThetaValue>>) {
-        self.frames.push(ThetaCallFrame::new_optional(bitstream_ref, params));
+    pub fn push_frame(&mut self, rip: usize, bitstream_ref: Rc<ThetaCompiledBitstream>, chunk_ref: Rc<Vec<u8>>, params: Vec<ThetaValue>) {
+        self.frames.push(ThetaCallFrame::new(rip, bitstream_ref, chunk_ref, params));
+    }
+
+    pub fn push_opt_frame(&mut self, rip: usize, bitstream_ref: Rc<ThetaCompiledBitstream>, chunk_ref: Rc<Vec<u8>>, params: Vec<Option<ThetaValue>>) {
+        self.frames.push(ThetaCallFrame::new_optional(rip, bitstream_ref, chunk_ref, params));
     }
 
     pub fn pop_frame(&mut self) -> Option<ThetaCallFrame> {
@@ -107,18 +111,20 @@ impl ThetaStack {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct ThetaCallFrame {
-    rip: usize,
+    pub rip: usize,
     // locals are uninitalized when created. we might need to make this an option and panic on fail
     pub locals: Vec<Option<ThetaValue>>,
     pub bitstream: Rc<ThetaCompiledBitstream>,
+    // chunk that we are currently running on
+    pub chunk: Rc<Vec<u8>>,
 }
 
 impl ThetaCallFrame {
-    pub fn new(bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<ThetaValue>) -> ThetaCallFrame {
-        ThetaCallFrame { rip: 0, locals: params.into_iter().map(|x| Some(x)).collect(), bitstream: bitstream_ref }
+    pub fn new(rip: usize, bitstream_ref: Rc<ThetaCompiledBitstream>, chunk_ref: Rc<Vec<u8>>, params: Vec<ThetaValue>) -> ThetaCallFrame {
+        ThetaCallFrame { rip, locals: params.into_iter().map(Some).collect(), bitstream: bitstream_ref, chunk: chunk_ref }
     }
 
-    pub fn new_optional(bitstream_ref: Rc<ThetaCompiledBitstream>, params: Vec<Option<ThetaValue>>) -> ThetaCallFrame {
-        ThetaCallFrame { rip: 0, locals: params, bitstream: bitstream_ref }
+    pub fn new_optional(rip: usize, bitstream_ref: Rc<ThetaCompiledBitstream>, chunk_ref: Rc<Vec<u8>>, params: Vec<Option<ThetaValue>>) -> ThetaCallFrame {
+        ThetaCallFrame { rip, locals: params, bitstream: bitstream_ref, chunk: chunk_ref }
     }
 }

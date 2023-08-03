@@ -44,7 +44,8 @@ impl<'a> Assembler for BasicAssembler<'a> {
         let instructions_in_chunk = chunk.instructions();
         for opcode in instructions_in_chunk {
             match opcode {
-                OpCode::Return => self.output_file.write(&[0u8])?,
+                OpCode::ReturnVoid => self.output_file.write(&[0x0u8])?,
+                OpCode::Return => self.output_file.write(&[0xF0u8])?,
                 OpCode::Constant { offset } => self.output_file.write(&[1u8, *offset as u8])?,
                 OpCode::Push { size } => {
                     let off_bytes = size.to_le_bytes();
@@ -98,6 +99,8 @@ impl<'a> Assembler for BasicAssembler<'a> {
 
                 OpCode::DebugPrint => self.output_file.write(&[0xFFu8])?,
                 OpCode::Noop => self.output_file.write(&[0xFDu8])?,
+                OpCode::GreaterEqual => self.output_file.write(&[0xA1])?,
+                OpCode::LessEqual => self.output_file.write(&[0xB1])?,
 
             };
         }
