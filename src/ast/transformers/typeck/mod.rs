@@ -370,6 +370,26 @@ impl ASTVisitor<ParseInfo> for TypeCk {
 
                 Ok(Expression::Call { callee: Box::new(callee_expr), args: actual_args, information: TypeCkOutput { ty: *return_ty, pi: information.clone() }})
             },
+            Expression::Return { ret, information } => {
+                // run typeck on expression
+
+                let expr_checked = match ret {
+                    Some(exp) => Some(Box::new(self.visit_expression(exp)?)),
+                    None => None,
+                };
+
+                // check against fn ret
+                // pull propagated information from framedata
+                
+                let fn_ret = information.frame_data.borrow().return_ty.clone().unwrap_or(TypeInformation::None);
+                let return_ty = expr_checked.as_ref().map(|x| x.information().ty.clone()).unwrap_or(TypeInformation::None);
+
+                if fn_ret != return_ty {
+                    return Err(TransformError::TypeCkError(TypeCkError::InvalidFunctionReturn(fn_ret, return_ty)));
+                }
+
+                Ok(Expression::Return { ret: expr_checked, information: TypeCkOutput { ty: TypeInformation::None, pi: information.clone() } })
+            },
         }
     }
 
@@ -421,6 +441,9 @@ impl ASTVisitor<ParseInfo> for TypeCk {
     }
 
     fn visit_function(&self, func: &Function<ParseInfo>) -> Result<Function<Self::InfoOut>, TransformError> {
+        // insert context into framedata for propagation
+        func.information.frame_data.borrow_mut().return_ty = Some(func.return_ty.clone());
+
         let body_ty = self.transform_tree(&func.chunk)?;
 
         if body_ty.information().ty != func.return_ty {

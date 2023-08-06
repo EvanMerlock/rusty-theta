@@ -15,6 +15,8 @@ fn init() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
 
+const FIB_TEST: &'static str = "fun fib(n: Int) -> Int { if (n <= 1) { return n; }; fib(n-1)+fib(n-2) }";
+
 #[test]
 fn function_generated() {
     init();

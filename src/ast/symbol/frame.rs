@@ -1,5 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
+use crate::ast::transformers::typeck::TypeInformation;
+
 
 pub type ExtFrameData = Rc<RefCell<FrameData>>;
 
@@ -8,12 +10,16 @@ pub type ExtFrameData = Rc<RefCell<FrameData>>;
 pub struct FrameData {
     total_params: usize,
     total_locals: usize,
+
+    /// We use this parameter to propagate return type information
+    /// So that return expressions can check
+    pub return_ty: Option<TypeInformation>,
 }
 
 impl FrameData {
 
     pub fn new() -> FrameData {
-        FrameData { total_params: 0, total_locals: 0 }
+        FrameData { total_params: 0, total_locals: 0, return_ty: None }
     }
 
     pub fn new_local(&mut self) -> usize {

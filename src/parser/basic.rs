@@ -355,6 +355,13 @@ impl<'a> BasicParser<'a> {
             let bs = self.block_expression();
             self.end_scope()?;
             bs
+        } else if let Some(_return_ty) = self.match_token([TokenType::Return]) {
+            let ret_expr = if let Some(_semi_token) = self.match_token([TokenType::Semicolon]) {
+                None
+            } else {
+                Some(Box::new(self.assignment()?))
+            };
+            Ok(Expression::Return { ret: ret_expr, information: ParseInfo { scope_depth: self.symbol_tbl.borrow().scope_depth(), current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone() } })
         } else {
             self.assignment() 
         }

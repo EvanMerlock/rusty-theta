@@ -348,6 +348,19 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
 
                 call_chunk
             },
+            Expression::Return { ret, information: _ } => {
+                let chunk = match ret {
+                    Some(expr) => self.visit_expression(expr)?,
+                    None => Chunk::new(),
+                };
+
+                let return_ck = match ret {
+                    Some(_) => build_chunk!(OpCode::Return),
+                    None => build_chunk!(OpCode::ReturnVoid),
+                };
+
+                chunk.merge_chunk(return_ck)
+            },
         })
     }
 
