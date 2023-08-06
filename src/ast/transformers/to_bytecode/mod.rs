@@ -154,13 +154,14 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                                 let local = info.pi.current_symbol_table.borrow().get_symbol_data(&Symbol::from(id.clone()), sd);
                                 match local {
                                     Some(SymbolData::Type { ty: _ }) => return Err(TransformError::from(ToByteCodeError::InvalidLocal(id))),
-                                    // TODO: not correct. need to track globals across CUs
+                                    // potentially not correct. need to track globals across CUs
+                                    // globals need to be namespaced by module
                                     Some(SymbolData::GlobalVariable { ty: _ }) => build_chunk!(OpCode::GetGlobal { offset: 0 }; ThetaConstant::Str(id)),
                                     Some(SymbolData::LocalVariable { ty: _, scope_level: _, slot }) => {
                                         build_chunk!(OpCode::GetLocal { offset: slot })
                                     },
                                     Some(SymbolData::Function { return_ty: _, args: _, fn_ty: _ }) => {
-                                        // embed function / closure object
+                                        // TODO: embed function / closure object
                                         todo!()
                                     }
                                     None => return Err(TransformError::from(ToByteCodeError::NoIdentFound(id)))
@@ -173,14 +174,13 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
 
             },
             Expression::Sequence { seq, .. } => {
-                seq.iter()
-                    // TODO: this needs to fail safely
-                    .map(|expr| {
-                        ToByteCode.visit_expression(expr)
-                            .expect("could not map ToByteCode visit expression.")
-                    })
-                    .reduce(|acc, new| acc.merge_chunk(new))
-                    .expect("expression vec was empty in seq")
+                let mut chunk = Chunk::new();
+                for seq_expr in seq {
+                    let exp = self.visit_expression(seq_expr)?;
+                    chunk = chunk.merge_chunk(exp);
+                }
+
+                chunk
             }
             Expression::Assignment { name, value, information } => {
                 let st = ThetaConstant::Str(name.id().clone());
@@ -246,6 +246,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 // then we emit the else block if it exists
 
                 // TODO: we are missing a POP somewhere in here.
+                // MAYBE.
                 // occurs when the if statement falls through and there's no else block.
 
                 if let Some(block) = else_block {
@@ -254,10 +255,6 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     // depending on which jump is emitted we need to add the size of the jump to the offset!!!
                     // we also need to consider if we're jumping from the START of the jump instruction (we are) vs. the end of the jump instruction
 
-
-                    // TODO: do we pop after an if expression? probably not given expression semantics
-                    // unless we use an if in a statement position
-                    // hence we should probably emit a no-op to jump to after the else block for the main body
                     let jump_chunk = if jump_size + 2 > 127 {
                         // emit non-"local" jump
                         build_chunk!(OpCode::JumpFar { offset: jump_size + 2 + (std::mem::size_of::<isize>() as isize) }, OpCode::Pop)
@@ -271,11 +268,6 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     let combined_block = combined_block.merge_chunk(jump_chunk);
                     combined_block.merge_chunk(block)
                 } else {
-                    // let second_op = match body.information().ty {
-                    //     super::typeck::TypeInformation::None => OpCode::Noop,
-                    //     _ => OpCode::Pop
-                    // };
-
                     let jump_chunk = build_chunk!(OpCode::JumpLocal { offset: 3 }, OpCode::Pop);
                     combined_block.merge_chunk(jump_chunk)
                 }
@@ -305,9 +297,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                     Chunk::new()
                 };
 
-                // TODO: this might not bypass the jump_to_beginning chunk...
-                // jump_to_beginning might be jump far or jump local. we need to know the size of the pred + body here
-                // which we do know.
+                // TODO: why is this 5?
                 let jump_to_end_offset: usize = body_chunk.instruction_size() + enc_pred.instruction_size() + 5;
                 let jump_to_end_chunk = match predicate {
                     Some(_) => build_conditional_jump(jump_to_end_offset, false),
@@ -388,7 +378,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
             Statement::VarStatement { ident, init, information: info } => {
                 // we will emit the initializer and then define the global here. note that `information` may eventually carry scoping information
                 // for now all variables are globals. this should change when lexical scoping is added
-                // TODO: should we pop here?
+                // pop is handled by the DefineGlobal and DefineLocal opcodes.
                 match info.pi.scope_depth {
                     0 => {
                         // emit global when sd == 0

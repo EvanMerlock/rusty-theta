@@ -42,8 +42,9 @@ impl ThetaStack {
 
     pub fn alloc_framespace(&mut self, size: usize) {
         match self.curr_frame_mut() {
+            // We set new values in frame to be none when framespace is allocated.
             Some(frame) => frame.locals.resize(frame.locals.len() + size, None),
-            None => todo!()
+            None => panic!()
         }
     }
 

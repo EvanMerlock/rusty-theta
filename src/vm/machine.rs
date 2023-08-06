@@ -8,8 +8,6 @@ use super::call_frame::ThetaStack;
 
 // TODO: can we snapshot the VM using CoW?
 // probably not, but what happens if an instruction fails due to bad input data?
-// TODO: separate disassembler from execution. disassembly only needs to happen once per input
-// and thus will take less time than execution except on REPL.
 pub struct VM {
     stack: ThetaStack,
     strings: HashMap<ThetaString, Rc<ThetaHeapValue>>,
@@ -127,8 +125,6 @@ impl VM {
                 0x2 => { 
                     debug!("Op: Push (0x2) with inc size {:#X}", chunk[offset+1]);
                     let stack_inc_size = usize::from_le_bytes(chunk[offset+1..offset+9].try_into().expect("8 ele slice not converted"));
-                    // TODO: what the heck is this supposed to push onto the stack?
-                    // Should it take in a heap value and push a pointer to that heap value to the stack? 
                     self.stack.alloc_framespace(stack_inc_size);
                     offset += 1 + std::mem::size_of::<usize>()
                 },
