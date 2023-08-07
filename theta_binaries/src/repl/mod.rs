@@ -29,7 +29,7 @@ pub enum ReplStatus {
 impl Repl {
     pub fn init() -> Repl {
         Repl {
-            machine: VM::new(),
+            machine: VM::default(),
             tbl: ExtSymbolTable::default(),
         }
     }

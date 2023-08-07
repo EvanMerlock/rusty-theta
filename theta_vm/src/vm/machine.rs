@@ -1,4 +1,4 @@
-use std::{rc::Rc, collections::HashMap};
+use std::{rc::Rc, collections::HashMap, io::Write};
 
 use log::{debug, error};
 use theta_types::bytecode::{ThetaString, ThetaHeapValue, ThetaCompiledBitstream, ThetaCompiledFunction, ThetaValue, DisassembleError, CHUNK_HEADER};
@@ -8,6 +8,7 @@ use super::{call_frame::ThetaStack, ThetaCallFrame};
 // TODO: can we snapshot the VM using CoW?
 // probably not, but what happens if an instruction fails due to bad input data?
 pub struct VM {
+    stdout: Box<dyn Write>,
     stack: ThetaStack,
     strings: HashMap<ThetaString, Rc<ThetaHeapValue>>,
     heap: Vec<Rc<ThetaHeapValue>>,
@@ -16,8 +17,9 @@ pub struct VM {
 }
 
 impl VM {
-    pub fn new() -> VM {
+    pub fn new(stdout: Box<dyn Write>) -> VM {
         VM {
+            stdout,
             stack: ThetaStack::new(),
             strings: HashMap::new(),
             heap: Vec::new(),
@@ -475,6 +477,6 @@ impl VM {
 
 impl Default for VM {
     fn default() -> Self {
-        Self::new()
+        Self::new(Box::new(std::io::stdout()))
     }
 }
