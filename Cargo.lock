@@ -350,13 +350,51 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "222a222a5bfe1bba4a77b45ec488a741b3cb8872e5e499451fd7d0129c9c7c3d"
 
 [[package]]
-name = "theta-lang"
+name = "theta"
 version = "0.1.0"
 dependencies = [
  "clap",
  "env_logger",
  "lazy_static",
  "log",
+ "theta-compiler",
+ "theta-types",
+ "theta-vm",
+ "tracing",
+ "utf8-chars",
+]
+
+[[package]]
+name = "theta-compiler"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "lazy_static",
+ "log",
+ "theta-types",
+ "tracing",
+ "utf8-chars",
+]
+
+[[package]]
+name = "theta-types"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "lazy_static",
+ "log",
+ "tracing",
+ "utf8-chars",
+]
+
+[[package]]
+name = "theta-vm"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "lazy_static",
+ "log",
+ "theta-types",
  "tracing",
  "utf8-chars",
 ]
