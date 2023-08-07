@@ -436,7 +436,7 @@ impl VM {
                 }
                 0xFF => { 
                     debug!("Op: Print (0xFF)"); 
-                    println!("{:?}", self.stack.pop()); 
+                    writeln!(self.stdout, "{:?}", self.stack.pop())?; 
                     offset += 1
                 },
                 code => { 
