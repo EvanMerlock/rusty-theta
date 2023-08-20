@@ -93,14 +93,14 @@ impl VM {
 
 impl VM {
     pub fn execute_code(&mut self) -> Result<(), DisassembleError> {
-        let (mut chunk, new_offset) = self.page_chunk();
+        let (chunk, new_offset) = self.page_chunk();
         let mut cont = true;
         self.current_offset = new_offset;
         self.current_chunk = chunk;
 
         while self.current_offset < self.current_chunk.len() && cont {
             // read into chunk
-            self.execute_line()?;
+            cont = self.execute_line()?;
         }
 
         Ok(())
