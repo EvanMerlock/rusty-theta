@@ -139,6 +139,7 @@ impl OpCode {
             OpCode::Constant { offset } => OpCode::Constant { offset: offset + new_base },
             OpCode::DefineGlobal { offset } => OpCode::DefineGlobal { offset: offset + new_base },
             OpCode::GetGlobal { offset } => OpCode::GetGlobal { offset: offset + new_base },
+            OpCode::CallDirect { name_offset } => OpCode::CallDirect { name_offset: name_offset + new_base },
             _ => self,
         }
     }

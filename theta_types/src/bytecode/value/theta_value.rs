@@ -17,7 +17,7 @@ pub const INT_MARKER: &[u8] = &[0xA, 0xA];
 pub const BOOL_MARKER: &[u8] = &[0xB, 0xB];
 pub const STRING_MARKER: &[u8] = &[0xC, 0xC];
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum ThetaValue {
     Double(f64),
     Int(i64),
@@ -104,7 +104,7 @@ impl From<TypeInformation> for ThetaFuncArg {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 
 pub enum ThetaHeapValue {
     Str(ThetaString),
