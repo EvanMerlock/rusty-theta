@@ -9,6 +9,7 @@ use super::{call_frame::ThetaStack, ThetaCallFrame};
 // probably not, but what happens if an instruction fails due to bad input data?
 pub struct VM {
     current_offset: usize,
+    current_chunk: Rc<Vec<u8>>,
     stdout: Box<dyn Write>,
     stack: ThetaStack,
     strings: HashMap<ThetaString, Rc<ThetaHeapValue>>,
@@ -21,6 +22,7 @@ impl VM {
     pub fn new(stdout: Box<dyn Write>) -> VM {
         VM {
             current_offset: 0,
+            current_chunk: Rc::default(),
             stdout,
             stack: ThetaStack::new(),
             strings: HashMap::new(),
@@ -94,26 +96,27 @@ impl VM {
         let (mut chunk, new_offset) = self.page_chunk();
         let mut cont = true;
         self.current_offset = new_offset;
+        self.current_chunk = chunk;
 
-        while self.current_offset < chunk.len() && cont {
+        while self.current_offset < self.current_chunk.len() && cont {
             // read into chunk
-            (chunk, cont) = self.execute_line(chunk.clone())?;
+            self.execute_line()?;
         }
 
         Ok(())
     }
 
     #[inline(always)]
-    pub fn execute_line(&mut self, mut chunk: Rc<Vec<u8>>) -> Result<(Rc<Vec<u8>>, bool), DisassembleError> {
-        match chunk[self.current_offset] {
+    pub fn execute_line(&mut self) -> Result<bool, DisassembleError> {
+        match self.current_chunk[self.current_offset] {
             0x0 => { 
                 debug!("Op: Void Return (0x0)");
                 // correct offset and load chunk
                 self.current_offset = self.stack.pop_frame().expect("expected stack frame").rip;
                 // end control
                 match self.stack().curr_frame() {
-                    Some(frame) => chunk = frame.chunk.clone(),
-                    None => return Ok((chunk, false)),
+                    Some(frame) => self.current_chunk = frame.chunk.clone(),
+                    None => return Ok(false),
                 };
             },
             0xF0 => {
@@ -123,21 +126,21 @@ impl VM {
                 // correct offset and load chunk
                 self.current_offset = self.stack.pop_frame().expect("expected stack frame").rip;
                 match self.stack().curr_frame() {
-                    Some(frame) => chunk = frame.chunk.clone(),
-                    None => return Ok((chunk, false)),
+                    Some(frame) => self.current_chunk = frame.chunk.clone(),
+                    None => return Ok(false),
                 };
                 // load return val onto the stack
                 self.stack.curr_frame_mut().expect("expected stack frame").locals.push(Some(sv));
             }
             0x1 => { 
-                debug!("Op: Constant (0x1) with offset: {:#X}", &chunk[self.current_offset+1]); 
-                let constant = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[self.current_offset+1] as usize].clone();
+                debug!("Op: Constant (0x1) with offset: {:#X}", &self.current_chunk[self.current_offset+1]); 
+                let constant = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[self.current_chunk[self.current_offset+1] as usize].clone();
                 self.stack.push(constant); 
                 self.current_offset += 2 
             },
             0x2 => { 
-                debug!("Op: Push (0x2) with inc size {:#X}", chunk[self.current_offset+1]);
-                let stack_inc_size = usize::from_le_bytes(chunk[self.current_offset+1..self.current_offset+9].try_into().expect("8 ele slice not converted"));
+                debug!("Op: Push (0x2) with inc size {:#X}", self.current_chunk[self.current_offset+1]);
+                let stack_inc_size = usize::from_le_bytes(self.current_chunk[self.current_offset+1..self.current_offset+9].try_into().expect("8 ele slice not converted"));
                 self.stack.alloc_framespace(stack_inc_size);
                 self.current_offset += 1 + std::mem::size_of::<usize>()
             },
@@ -302,8 +305,8 @@ impl VM {
                 self.current_offset += 1
             },
             0xC0 => { 
-                debug!("Op: Define Global (0xC0) with offset: {:#X}", chunk[self.current_offset+1] as usize);
-                let glob = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[self.current_offset+1] as usize].clone();
+                debug!("Op: Define Global (0xC0) with offset: {:#X}", self.current_chunk[self.current_offset+1] as usize);
+                let glob = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[self.current_chunk[self.current_offset+1] as usize].clone();
                 match glob {
                     ThetaValue::Pointer(hv) => {
                         match &*hv {
@@ -320,7 +323,7 @@ impl VM {
             },
             0xC1 => { 
                 debug!("Op: Read Global (0xC1)");
-                let glob = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[self.current_offset+1] as usize].clone();
+                let glob = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[self.current_chunk[self.current_offset+1] as usize].clone();
                 match glob {
                     ThetaValue::Pointer(hv) => {
                         match &*hv {
@@ -336,20 +339,20 @@ impl VM {
                 self.current_offset += 2
             },
             0xC2 => { 
-                debug!("Op: Define Local (0xC2) with offset: {:#X}", chunk[self.current_offset+1] as usize);
-                let li = chunk[self.current_offset+1] as usize;
+                debug!("Op: Define Local (0xC2) with offset: {:#X}", self.current_chunk[self.current_offset+1] as usize);
+                let li = self.current_chunk[self.current_offset+1] as usize;
                 self.stack.set_local(li);
                 self.current_offset += 2
             },
             0xC3 => { 
-                debug!("Op: Read Local (0xC3) with offset: {:#X}", chunk[self.current_offset+1] as usize);
-                let li = chunk[self.current_offset+1] as usize;
+                debug!("Op: Read Local (0xC3) with offset: {:#X}", self.current_chunk[self.current_offset+1] as usize);
+                let li = self.current_chunk[self.current_offset+1] as usize;
                 self.stack.push(self.stack.get_local(li).expect("local does not exist when it should").clone());
                 self.current_offset += 2
             },
             0xD0 => {
-                debug!("Op: Jump Unconditional (0xD0) with offset: {:#X}", chunk[self.current_offset+1] as usize);
-                let local_jump_point = chunk[self.current_offset+1] as i8;
+                debug!("Op: Jump Unconditional (0xD0) with offset: {:#X}", self.current_chunk[self.current_offset+1] as usize);
+                let local_jump_point = self.current_chunk[self.current_offset+1] as i8;
                 let (new_off, overflow) = self.current_offset.overflowing_add_signed(local_jump_point as isize);
                 if overflow {
                     panic!()
@@ -357,8 +360,8 @@ impl VM {
                 self.current_offset = new_off;
             },
             0xD1 => {
-                debug!("Op: Jump If False Local (0xD1) with offset: {:#X}", chunk[self.current_offset+1] as usize);
-                let local_jump_point = chunk[self.current_offset+1] as i8;
+                debug!("Op: Jump If False Local (0xD1) with offset: {:#X}", self.current_chunk[self.current_offset+1] as usize);
+                let local_jump_point = self.current_chunk[self.current_offset+1] as i8;
 
                 // this op should not pop off the stack, we should instead emit an instruction to do that.
                 match self.stack.peek() {
@@ -381,8 +384,8 @@ impl VM {
                 }
             },
             0xD2 => {
-                debug!("Op: Jump Unconditional Far (0xD2) with offset: {:#X}", chunk[self.current_offset+1] as usize);
-                let local_jump_point = isize::from_le_bytes(chunk[self.current_offset+1..self.current_offset+9].try_into().expect("8 ele slice not converted"));
+                debug!("Op: Jump Unconditional Far (0xD2) with offset: {:#X}", self.current_chunk[self.current_offset+1] as usize);
+                let local_jump_point = isize::from_le_bytes(self.current_chunk[self.current_offset+1..self.current_offset+9].try_into().expect("8 ele slice not converted"));
                 let (new_off, overflow) = self.current_offset.overflowing_add_signed(local_jump_point);
                 if overflow {
                     panic!()
@@ -390,8 +393,8 @@ impl VM {
                 self.current_offset = new_off;                
             },
             0xD3 => {
-                debug!("Op: Jump If False Far (0xD3) with offset: {:#X}", chunk[self.current_offset+1] as usize);
-                let local_jump_point = isize::from_le_bytes(chunk[self.current_offset+1..self.current_offset+9].try_into().expect("8 ele slice not converted"));
+                debug!("Op: Jump If False Far (0xD3) with offset: {:#X}", self.current_chunk[self.current_offset+1] as usize);
+                let local_jump_point = isize::from_le_bytes(self.current_chunk[self.current_offset+1..self.current_offset+9].try_into().expect("8 ele slice not converted"));
 
                 // this op should not pop off the stack, we should instead emit an instruction to do that.
                 match self.stack.peek() {
@@ -414,7 +417,7 @@ impl VM {
                 }
             },
             0xE0 => {
-                debug!("Op: Call Direct (0xE0) with offset: {:#X}", &chunk[self.current_offset+1]);
+                debug!("Op: Call Direct (0xE0) with offset: {:#X}", &self.current_chunk[self.current_offset+1]);
                 // on top of the stack should be either a function object or a symbol reference
                 let stack_top = self.stack.pop().expect("expected stack item");
                 // let constant = self.stack.curr_frame().expect("expected stack frame").bitstream.constants[chunk[offset+1] as usize].clone();
@@ -440,7 +443,7 @@ impl VM {
                 // let ck = func.0.chunk.clone();
                 // self.execute_code(&ck)?;
                 // self.stack.pop_frame();
-                (chunk, self.current_offset) = self.page_chunk();
+                (self.current_chunk, self.current_offset) = self.page_chunk();
             }
             0xFD => {
                 debug!("Op: Noop (0xFD)");
@@ -458,7 +461,7 @@ impl VM {
             }
         };
 
-        Ok((chunk, true))
+        Ok(true)
     }
 
     #[inline(always)]
