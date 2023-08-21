@@ -292,6 +292,8 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
             Expression::LoopExpression { predicate, body, information: _ } => {
                 let body_chunk = self.visit_expression(body)?;
                 
+                // TODO: this is fucked. something is super wrong here... loop offsets are totally wrong in some cases.
+                // TODO: predicate not generating pop instruction after jumping depending on predicate
                 let enc_pred = if let Some(x) = predicate {
                     self.visit_expression(x)?
                 } else {
@@ -299,7 +301,8 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 };
 
                 // TODO: why is this 5?
-                let jump_to_end_offset: usize = body_chunk.instruction_size() + enc_pred.instruction_size() + 5;
+                // size of JMPFAR = 1 (instruction) + 8 (sizeof isize)
+                let jump_to_end_offset: usize = body_chunk.instruction_size() + enc_pred.instruction_size() + (1 + std::mem::size_of::<isize>());
                 let jump_to_end_chunk = match predicate {
                     Some(_) => build_conditional_jump(jump_to_end_offset, false),
                     None => Chunk::new(),
@@ -308,7 +311,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 let loop_head = enc_pred.merge_chunk(jump_to_end_chunk).merge_chunk(body_chunk);
 
                 // removing jump optimization to ensure size is known
-                // size = 5
+                // size = JMPFAR = 1 (instruction) + 8 (sizeof isize)
                 let jump_to_beginning_chunk: Chunk = match predicate {
                     Some(_) => unconditional_far_jump(loop_head.instruction_size(), true),
                     None => unconditional_far_jump(loop_head.instruction_size(), true),

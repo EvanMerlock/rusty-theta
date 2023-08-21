@@ -7,6 +7,13 @@ fn init() {
 
 const FIB_TEST: &'static str = "fun fib(n: Int) -> Int { if (n <= 1) { return n; }; fib(n-1)+fib(n-2) }";
 
+const LOOP_TEST: &'static str = "fun loop_test() {
+    let y: Int = 0;
+    while (y < 10) {
+        print(\"hello, world\");
+    };
+}";
+
 #[test]
 fn function_generated() {
     init();

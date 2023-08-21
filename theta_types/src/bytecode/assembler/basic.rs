@@ -101,6 +101,7 @@ impl<'a> Assembler for BasicAssembler<'a> {
                 OpCode::Noop => self.output_file.write(&[0xFDu8])?,
                 OpCode::GreaterEqual => self.output_file.write(&[0xA1])?,
                 OpCode::LessEqual => self.output_file.write(&[0xB1])?,
+                OpCode::Breakpoint => self.output_file.write(&[0xFE])?,
 
             };
         }

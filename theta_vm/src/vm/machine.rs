@@ -106,7 +106,7 @@ impl VM {
         Ok(())
     }
 
-    #[inline(always)]
+    // #[inline(always)]
     pub fn execute_line(&mut self) -> Result<bool, DisassembleError> {
         match self.current_chunk[self.current_offset] {
             0x0 => { 
@@ -448,6 +448,12 @@ impl VM {
             0xFD => {
                 debug!("Op: Noop (0xFD)");
                 self.current_offset += 1
+            },
+            0xFE => {
+                debug!("Op: Breakpoint (0xFE)");
+                self.current_offset += 1;
+                // yield control from the machine to the client
+                return Ok(false);
             }
             0xFF => { 
                 debug!("Op: Print (0xFF)"); 

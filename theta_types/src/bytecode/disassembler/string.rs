@@ -145,6 +145,10 @@ impl StringDisassembler {
                     ));
                     offset += 2
                 },
+                0xFE => {
+                    readout.push_str("Op: Breakpoint (0xFE)\r\n");
+                    offset += 1
+                }
                 0xFD => {
                     readout.push_str("Op: Noop (0xFD)\r\n");
                     offset += 1

@@ -211,7 +211,8 @@ impl ThetaFileWalker {
         let chunk_size: usize = usize::from_le_bytes(chunk[8..16].try_into().expect("could not get chunk size"));
 
         debug!("chunk size: {chunk_size}");
-
+        
+        // TODO: scan for 'illegal' bytecodes and screen them out
 
         Ok((chunk_size, Rc::new(chunk[0..=15+chunk_size].to_vec())))
     }

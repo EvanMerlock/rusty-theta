@@ -35,6 +35,9 @@ pub enum OpCode {
 
     CallDirect { name_offset: usize },
 
+    // DEBUG BYTECODES
+
+    Breakpoint,
     Noop,
     DebugPrint,
 }
@@ -69,6 +72,7 @@ impl OpCode {
             OpCode::Return => 1,
             OpCode::GreaterEqual => 1,
             OpCode::LessEqual => 1,
+            OpCode::Breakpoint => 1,
         }
     }
 
@@ -100,6 +104,7 @@ impl OpCode {
             OpCode::Return => "Return".to_string(),
             OpCode::GreaterEqual => "Greater Than Or Equal To".to_string(),
             OpCode::LessEqual => "Less Than Or Equal To".to_string(),
+            OpCode::Breakpoint => "Breakpoint".to_string(),
         }
     }
 
@@ -131,6 +136,7 @@ impl OpCode {
             OpCode::Noop => 0xFD,
             OpCode::GreaterEqual => 0xA1,
             OpCode::LessEqual => 0xB1,
+            OpCode::Breakpoint => 0xFE,
         }
     }
 

@@ -27,7 +27,7 @@ impl Write for TestOutput {
     }
 }
 
-pub fn build_test_vm(code: &'static str, stdout: Box<dyn Write>) -> Result<(VM, Rc<ThetaCompiledBitstream>, Vec<u8>), Box<dyn std::error::Error>> { 
+pub fn build_test_vm(code: &'static str, fn_name: &'static str, stdout: Box<dyn Write>) -> Result<(VM, Rc<ThetaCompiledBitstream>, Vec<u8>), Box<dyn std::error::Error>> { 
 
     let tbl = ExtSymbolTable::default();
     let mut machine = VM::new(stdout);
@@ -69,7 +69,7 @@ pub fn build_test_vm(code: &'static str, stdout: Box<dyn Write>) -> Result<(VM, 
         bitstream.functions.push(theta_func);
     }
 
-    let call_function_chunk = build_chunk!(OpCode::Constant { offset: 0 }, OpCode::CallDirect { name_offset: 0 }; ThetaConstant::Str(String::from("fib")));
+    let call_function_chunk = build_chunk!(OpCode::Constant { offset: 0 }, OpCode::CallDirect { name_offset: 0 }; ThetaConstant::Str(String::from(fn_name)));
     let reloc = bitstream.constants.len();
     let call_function_chunk = call_function_chunk.relocate(reloc);
 
