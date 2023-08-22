@@ -56,6 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let parser = BasicParser::new_sym(tokens.output(), tbl);
     let parser = ReplParser::new(parser);
     let trees = parser.parse()?;
+    let tbc = ToByteCode::new(tokens.line_mapping());
     for pi in trees {
         write!(out_file, "==== NEW ITEM ====\r\n")?;
         match pi {
@@ -64,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 debug!("sym: {:?}", sym.borrow());
                 let type_cker = TypeCk::new(sym);
                 let type_check = type_cker.transform_item(&item)?;
-                let thefunc = ToByteCode.transform_item(&type_check)?;
+                let thefunc = tbc.transform_item(&type_check)?;
                 debug!("item: {:?}", thefunc);
             
                 {
@@ -81,7 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 debug!("sym: {:?}", sym.borrow());
                 let type_cker = TypeCk::new(sym);
                 let type_check = type_cker.transform_tree(&decl)?;
-                let chunk = ToByteCode.transform_tree(&type_check)?;
+                let chunk = tbc.transform_tree(&type_check)?;
                 debug!("chunk: {:?}", chunk);
             
                 {

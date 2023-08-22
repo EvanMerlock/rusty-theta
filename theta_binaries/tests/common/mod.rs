@@ -56,7 +56,8 @@ pub fn build_test_vm(code: &'static str, fn_name: &'static str, fn_transform: im
             },
         };
 
-        let mut theta_func = ToByteCode.transform_item(&type_check)?;
+        let tbc = ToByteCode::new(tokens.line_mapping());
+        let mut theta_func = tbc.transform_item(&type_check)?;
 
         // need to pull out constants and reloc
         let consts = theta_func.chunk.constants();

@@ -81,7 +81,7 @@ impl Repl {
                 let mut chunk = Chunk::new();
 
                 for item in trees {
-                    self.repl_item(item, &mut bitstream, &mut chunk)?;
+                    self.repl_item(item, tokens.line_mapping(), &mut bitstream, &mut chunk)?;
                 }
 
                 if !chunk.instructions().is_empty() {
@@ -119,7 +119,8 @@ impl Repl {
                 Ok(ReplStatus::ReplOk)
     }
 
-    fn repl_item(&mut self, item: ReplItem, bitstream: &mut ThetaBitstream, chunk: &mut Chunk) -> Result<(), Box<dyn std::error::Error>> {
+    fn repl_item(&mut self, item: ReplItem, mappings: &Vec<usize>, bitstream: &mut ThetaBitstream, chunk: &mut Chunk) -> Result<(), Box<dyn std::error::Error>> {
+        let byte_code_translator = ToByteCode::new(mappings);
         match item {
             ReplItem::ParserItem(pi) => {
                     let sym = &pi.information().current_symbol_table;
@@ -138,7 +139,7 @@ impl Repl {
                         },
                     };
 
-                    let mut theta_func = ToByteCode.transform_item(&type_check)?;
+                    let mut theta_func = byte_code_translator.transform_item(&type_check)?;
 
                     // need to pull out constants and reloc
                     let consts = theta_func.chunk.constants();
@@ -155,7 +156,7 @@ impl Repl {
                 debug!("sym: {:?}", sym.borrow());
                 let type_cker = TypeCk::new(sym);
                 let type_check = type_cker.transform_tree(&decl)?;
-                let ty_chunk = ToByteCode.transform_tree(&type_check)?;
+                let ty_chunk = byte_code_translator.transform_tree(&type_check)?;
 
                 let reloc = bitstream.constants.len();
                 let new_chunk = ty_chunk.relocate(reloc);

@@ -11,7 +11,15 @@ use theta_types::types::TypeInformation;
 use super::typeck::TypeCkOutput;
 use super::{ASTTerminator, ASTTransformer, TransformError};
 
-pub struct ToByteCode;
+pub struct ToByteCode {
+    line_mappings: Vec<usize>,
+}
+
+impl ToByteCode {
+    pub fn new(mappings: &[usize]) -> ToByteCode {
+        ToByteCode { line_mappings: mappings.to_owned() }
+    }
+}
 
 impl ASTTransformer<TypeCkOutput> for ToByteCode {
 
@@ -37,8 +45,8 @@ impl ASTTransformer<TypeCkOutput> for ToByteCode {
         };
 
         block_chunk = block_chunk.merge_chunk(match tree.inner() {
-            InnerAbstractTree::Expression(exp) => ToByteCode.visit_expression(&exp.0)?,
-            InnerAbstractTree::Statement(stmt) => ToByteCode.visit_statement(&stmt.0)?,
+            InnerAbstractTree::Expression(exp) => self.visit_expression(&exp.0)?,
+            InnerAbstractTree::Statement(stmt) => self.visit_statement(&stmt.0)?,
         });
 
         let mut pop_block = Chunk::new();
@@ -96,8 +104,8 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
                 right,
                 ..
             } => {
-                let left_val = ToByteCode.visit_expression(left)?;
-                let right_val = ToByteCode.visit_expression(right)?;
+                let left_val = self.visit_expression(left)?;
+                let right_val = self.visit_expression(right)?;
                 let res_chunk = left_val.merge_chunk(right_val);
                 let op_chunk = match operator.ty() {
                     TokenType::Plus => build_chunk!(OpCode::Add),
@@ -117,7 +125,7 @@ impl ASTTerminator<TypeCkOutput> for ToByteCode {
             Expression::Unary {
                 operator, right, ..
             } => {
-                let right_val = ToByteCode.visit_expression(right)?;
+                let right_val = self.visit_expression(right)?;
                 let op_chunk = match operator.ty() {
                     TokenType::Minus => build_chunk!(OpCode::Negate),
                     _ => return Err(TransformError::from(ToByteCodeError::InvalidToken(format!("in unary precedence: {}", operator)))),
