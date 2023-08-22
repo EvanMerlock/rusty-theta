@@ -1,4 +1,4 @@
-use std::{iter::Peekable, error::Error, fmt::Display};
+use std::{iter::Peekable, error::Error, fmt::Display, collections::HashMap};
 
 use theta_types::bytecode::{Token, TokenType, IDENTIFIERS};
 
@@ -32,6 +32,7 @@ pub struct BasicLexer<'a> {
     current: usize,
     line_num: usize,
     comment_level: usize,
+    line_mapping: Vec<usize>,
 }
 
 impl<'a> BasicLexer<'a> {
@@ -43,7 +44,13 @@ impl<'a> BasicLexer<'a> {
             current: 0,
             line_num: 1,
             comment_level: 0,
+            line_mapping: Vec::new(),
         }
+    }
+
+    fn inc_line_number(&mut self) {
+        self.line_num += 1;
+        self.line_mapping.push(self.current);
     }
 
     fn string(&mut self) -> Result<Token, LexerError> {
@@ -53,7 +60,7 @@ impl<'a> BasicLexer<'a> {
 
         while self.peek().map(|opt| opt != '"').unwrap_or(false) && !self.is_at_end() {
             if self.peek().map(|opt| opt == '\n').unwrap_or(false) {
-                self.line_num += 1;
+                self.inc_line_number();
             }
 
             if let Some(c) = self.advance() {
@@ -145,7 +152,7 @@ impl<'a> BasicLexer<'a> {
     }
 
     fn generate_token(&self, tok: TokenType) -> Token {
-        Token::new(self.line_num, self.start, self.current, tok)
+        Token::new(self.start, self.current, tok)
     }
 
     fn inc_comment_level(&mut self) {
@@ -176,7 +183,7 @@ impl<'a> Lexer for BasicLexer<'a> {
 
             Some(' ') | Some('\r') | Some('\t') => Ok(None),
             Some('\n') => {
-                self.line_num += 1; 
+                self.inc_line_number();
                 Ok(None)
             },
 
@@ -269,8 +276,9 @@ impl<'a> Lexer for BasicLexer<'a> {
         }
     }
 
-    fn lex(mut self) -> Result<Vec<Token>, LexerError> {
+    fn lex(mut self) -> Result<LexerResult<Vec<Token>>, LexerError> {
 
+        self.line_mapping = Vec::new();
         let mut tokens = Vec::new();
 
         while !self.is_at_end() {
@@ -283,6 +291,6 @@ impl<'a> Lexer for BasicLexer<'a> {
 
         tokens.push(self.generate_token(TokenType::Eof));
 
-        Ok(tokens)
+        Ok(LexerResult::new(tokens, self.line_mapping))
     }
 }

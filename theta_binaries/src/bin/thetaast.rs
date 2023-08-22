@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let tokens = lexer.lex()?;
 
-    let parser = BasicParser::new(&tokens);
+    let parser = BasicParser::new(tokens.output());
     let pi = parser.parse()?;
 
     for item in pi {

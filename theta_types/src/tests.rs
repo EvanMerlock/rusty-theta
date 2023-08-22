@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! token {
     ($tok_type:expr) => {
-        Token::new(1, 0, 1, $tok_type)
+        Token::new(0, 1, $tok_type)
     };
     ($tok_type:expr, $line:expr, $l_start:expr, $l_end:expr) => {
         Token::new($line, $l_start, $l_end, tok_type)

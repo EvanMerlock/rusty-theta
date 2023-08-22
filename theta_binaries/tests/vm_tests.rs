@@ -1,5 +1,7 @@
 use theta_types::bytecode::ThetaValue;
 
+use crate::common::identity;
+
 const IF_CONDITION: &'static str = "if (true) { let y: Int = 4; print(y); } else { let y: Int = 5; print(y); };";
 const WHILE_INFINITE: &'static str = "while { print(\"hello, world\"); };";
 const WHILE_INFINITE_FN: &'static str = "fun test() { print(\"hello, world\"); } \r\n while { test(); };";
@@ -22,7 +24,7 @@ pub fn fibbonaci_test() -> Result<(), Box<dyn std::error::Error>> {
 
     let stdout = common::TestOutput::new();
 
-    let (mut machine, loaded_bs, compiled_chunk) = crate::common::build_test_vm(code, "fib", Box::new(stdout.clone()))?;
+    let (mut machine, loaded_bs, compiled_chunk) = crate::common::build_test_vm(code, "fib", identity, Box::new(stdout.clone()))?;
 
     // do the magic stack frame thing
     machine.push_frame(ThetaCallFrame { rip: 0, locals: vec![Some(ThetaValue::Int(10))], bitstream: loaded_bs, chunk: Rc::new(compiled_chunk) });
@@ -55,7 +57,49 @@ pub fn loop_test_1() -> Result<(), Box<dyn std::error::Error>> {
 
     let stdout = common::TestOutput::new();
 
-    let (mut machine, loaded_bs, compiled_chunk) = crate::common::build_test_vm(code, "looptest", Box::new(stdout.clone()))?;
+    let (mut machine, loaded_bs, compiled_chunk) = crate::common::build_test_vm(code, "looptest", identity, Box::new(stdout.clone()))?;
+
+    // do the magic stack frame thing
+    machine.push_frame(ThetaCallFrame { rip: 0, locals: vec![], bitstream: loaded_bs, chunk: Rc::new(compiled_chunk) });
+
+    // execute chunk
+    machine.execute_code()?;
+    
+    let output = stdout.inner.borrow();
+    let stdout_str = String::from_utf8(output.clone()).expect("failed to convert stdout to string");
+    assert_eq!(&stdout_str, "Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+Some(Pointer(Str(ThetaString { internal: \"hello, world\" })))
+");
+
+
+    Ok(())
+
+}
+
+pub fn loop_test_bp() -> Result<(), Box<dyn std::error::Error>> {
+    use std::rc::Rc;
+    use theta_vm::vm::ThetaCallFrame;
+
+    let code = 
+    "fun looptest() {
+        while {
+            print(\"hello, world\");
+        };
+    }";
+
+    let stdout = common::TestOutput::new();
+
+    let (mut machine, loaded_bs, compiled_chunk) = crate::common::build_test_vm(code, "looptest", |chunk| {
+        chunk
+    }, Box::new(stdout.clone()))?;
 
     // do the magic stack frame thing
     machine.push_frame(ThetaCallFrame { rip: 0, locals: vec![], bitstream: loaded_bs, chunk: Rc::new(compiled_chunk) });

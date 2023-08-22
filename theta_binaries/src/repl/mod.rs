@@ -73,7 +73,7 @@ impl Repl {
                 let mut chars = valid_line.chars();
                 let lexer = BasicLexer::new(&mut chars);
                 let tokens = lexer.lex()?;
-                let parser = BasicParser::new_sym(&tokens, self.tbl.clone());
+                let parser = BasicParser::new_sym(tokens.output(), self.tbl.clone());
                 let parser = ReplParser::new(parser);
                 let trees = parser.parse()?;
 

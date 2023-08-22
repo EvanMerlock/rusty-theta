@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let lexer = BasicLexer::new(&mut characters);
     let tokens = lexer.lex()?;
     let tbl = Rc::new(RefCell::new(SymbolTable::default()));
-    let parser = BasicParser::new_sym(&tokens, tbl);
+    let parser = BasicParser::new_sym(tokens.output(), tbl);
     let parser = ReplParser::new(parser);
     let trees = parser.parse()?;
     for pi in trees {

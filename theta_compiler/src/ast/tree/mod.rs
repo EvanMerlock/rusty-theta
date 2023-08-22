@@ -56,6 +56,13 @@ impl<T> AbstractTree<T> where T: Debug + PartialEq {
             InnerAbstractTree::Statement((stmt, info)) => AbstractTree::statement(stmt.strip_token_information(), info),
         }
     }
+
+    pub fn map_information<V: Debug + PartialEq>(self, map_fn: &dyn Fn(T) -> V) -> AbstractTree<V> {
+        match self.inner {
+            InnerAbstractTree::Expression((exp, info)) => AbstractTree::expression(exp.map_information(map_fn), map_fn(info)),
+            InnerAbstractTree::Statement((stmt, info)) => AbstractTree::statement(stmt.map_information(map_fn), map_fn(info)),
+        }
+    }
 }
 
 

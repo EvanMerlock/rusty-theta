@@ -36,7 +36,8 @@ impl fmt::Display for ParseError {
                 msg
             } => match token.ty() {
                 TokenType::Eof => write!(f, "[Parse] Error: {} at end of file", msg),
-                _ => write!(f, "[Parse] Error: {} at line {}, character {}", msg, token.line_num(), token.char_loc())
+                // TODO: add line number here somehow
+                _ => write!(f, "[Parse] Error: {} at character {}", msg, token.char_loc())
             },
             ParseError::Other { msg } => write!(f, "[Parse] Error: {}", msg)
         }

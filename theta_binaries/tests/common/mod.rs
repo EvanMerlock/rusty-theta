@@ -27,7 +27,7 @@ impl Write for TestOutput {
     }
 }
 
-pub fn build_test_vm(code: &'static str, fn_name: &'static str, stdout: Box<dyn Write>) -> Result<(VM, Rc<ThetaCompiledBitstream>, Vec<u8>), Box<dyn std::error::Error>> { 
+pub fn build_test_vm(code: &'static str, fn_name: &'static str, fn_transform: impl Fn(Chunk) -> Chunk, stdout: Box<dyn Write>) -> Result<(VM, Rc<ThetaCompiledBitstream>, Vec<u8>), Box<dyn std::error::Error>> { 
 
     let tbl = ExtSymbolTable::default();
     let mut machine = VM::new(stdout);
@@ -35,7 +35,7 @@ pub fn build_test_vm(code: &'static str, fn_name: &'static str, stdout: Box<dyn 
     let mut chars = code.chars();
     let lexer = BasicLexer::new(&mut chars);
     let tokens = lexer.lex()?;
-    let parser = BasicParser::new_sym(&tokens, tbl.clone());
+    let parser = BasicParser::new_sym(tokens.output(), tbl.clone());
     let trees = parser.parse()?;
 
     let mut bitstream = ThetaBitstream::new();
@@ -89,4 +89,8 @@ pub fn build_test_vm(code: &'static str, fn_name: &'static str, stdout: Box<dyn 
     basic_assembler.assemble_chunk(call_function_chunk)?;
 
     Ok((machine, loaded_bs, compiled_chunk))
+}
+
+pub fn identity<T>(x: T) -> T {
+    x
 }

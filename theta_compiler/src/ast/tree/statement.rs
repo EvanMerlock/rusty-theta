@@ -54,4 +54,13 @@ impl<T: Debug + PartialEq> Statement<T> {
             Statement::Partial { expression, information } => Statement::Partial { expression: expression.strip_token_information(), information },
         }
     }
+
+    pub fn map_information<V: Debug + PartialEq>(self, map_fn: &dyn Fn(T) -> V) -> Statement<V> {
+        match self {
+            Statement::ExpressionStatement { expression, information } => Statement::ExpressionStatement { expression: expression.map_information(map_fn), information: map_fn(information) },
+            Statement::PrintStatement { expression, information } => Statement::PrintStatement { expression: expression.map_information(map_fn), information: map_fn(information) },
+            Statement::VarStatement { ident, init, information } => Statement::VarStatement { ident, init: init.map_information(map_fn), information: map_fn(information) },
+            Statement::Partial { expression, information } => Statement::Partial { expression: expression.map_information(map_fn), information: map_fn(information) },
+        }
+    }
 }

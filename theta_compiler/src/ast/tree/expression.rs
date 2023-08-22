@@ -105,4 +105,19 @@ impl<T: Debug + PartialEq> Expression<T> {
             Expression::Return { ret, information } => Expression::Return { ret: ret.map(|x| Box::new(x.strip_token_information())), information },
         }
     }
+
+    pub fn map_information<V: Debug + PartialEq>(self, map_fn: &dyn Fn(T) -> V) -> Expression<V> {
+        match self {
+            Expression::Binary { left, operator, right, information } => Expression::Binary { left: Box::new(left.map_information(map_fn)), operator, right: Box::new(right.map_information(map_fn)), information: map_fn(information) },
+            Expression::Unary { operator, right, information } => Expression::Unary { operator, right: Box::new(right.map_information(map_fn)), information: map_fn(information) },
+            Expression::Literal { literal, information } => Expression::Literal { literal, information: map_fn(information) },
+            Expression::Sequence { seq, information } => Expression::Sequence { seq: seq.into_iter().map(|x| x.map_information(map_fn)).collect(), information: map_fn(information) },
+            Expression::Assignment { name, value, information } => Expression::Assignment { name, value: Box::new(value.map_information(map_fn)), information: map_fn(information) },
+            Expression::If { check_expression, body, else_body, information } => Expression::If { check_expression: Box::new(check_expression.map_information(map_fn)), body: Box::new(body.map_information(map_fn)), else_body: else_body.map(|stmt| Box::new(stmt.map_information(map_fn))), information: map_fn(information) },
+            Expression::BlockExpression { statements, information, final_expression } => { Expression::BlockExpression { statements: statements.into_iter().map(|x| x.map_information(map_fn)).collect(), information: map_fn(information), final_expression: final_expression.map(|x| Box::new(x.map_information(map_fn))) } },
+            Expression::LoopExpression { predicate, body, information } => Expression::LoopExpression { predicate: predicate.map(|x| Box::new(x.map_information(map_fn))), body: Box::new(body.map_information(map_fn)), information: map_fn(information) },
+            Expression::Call { callee: function, args, information } => Expression::Call { callee: Box::new(function.map_information(map_fn)), args: args.into_iter().map(|x| x.map_information(map_fn)).collect(), information: map_fn(information) },
+            Expression::Return { ret, information } => Expression::Return { ret: ret.map(|x| Box::new(x.map_information(map_fn))), information: map_fn(information) },
+        }
+    }
 }

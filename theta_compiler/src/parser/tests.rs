@@ -48,9 +48,9 @@ const LITERAL_BINARY_2: Token = token!(TokenType::Plus);
 const BINARY_TEST_1: [Token; 4] = [LITERAL_LEFT_2, LITERAL_BINARY_2, LITERAL_RIGHT_2, SEMICOLON_TOKEN];
 define_parse_test!(basic_parser_recog_binary, BINARY_TEST_1, AbstractTree::statement(statement!(Expr: binary!(literal!(LITERAL_LEFT_2), LITERAL_BINARY_2, literal!(LITERAL_RIGHT_2))), ()));
 
-const LITERAL_LEFT_3: Token = Token::new(1, 0, 1, TokenType::True);
-const LITERAL_RIGHT_3: Token = Token::new(1, 2, 3, TokenType::True);
-const LITERAL_BINARY_3: Token = Token::new(1, 1, 2, TokenType::EqualEqual);
+const LITERAL_LEFT_3: Token = Token::new(0, 1, TokenType::True);
+const LITERAL_RIGHT_3: Token = Token::new(2, 3, TokenType::True);
+const LITERAL_BINARY_3: Token = Token::new(1, 2, TokenType::EqualEqual);
 const BINARY_TEST_2: [Token; 4] = [LITERAL_LEFT_3, LITERAL_BINARY_3, LITERAL_RIGHT_3, SEMICOLON_TOKEN];
 define_parse_test!(basic_parser_recog_bool, BINARY_TEST_2, AbstractTree::statement(statement!(Expr: binary!(literal!(LITERAL_LEFT_3), LITERAL_BINARY_3, literal!(LITERAL_RIGHT_3))), ()));
 

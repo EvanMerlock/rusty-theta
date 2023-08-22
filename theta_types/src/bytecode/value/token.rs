@@ -1,7 +1,8 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::hash::Hash;
+
+use crate::types::LocationData;
 
 lazy_static! {
     pub static ref IDENTIFIERS: HashMap<&'static str, TokenType> = {
@@ -28,23 +29,15 @@ lazy_static! {
 pub struct Token(LocationData, TokenType);
 
 impl Token {
-    pub const fn new(line_num: usize, begin: usize, end: usize, typ: TokenType) -> Token {
+    pub const fn new(begin: usize, end: usize, typ: TokenType) -> Token {
         Token (
-            LocationData {
-                line_num,
-                tok_begin: begin,
-                tok_end: end
-            },
+            LocationData::new(begin, end),
             typ
         )
     }
 
-    pub fn line_num(&self) -> usize {
-        self.0.line_num
-    }
-
     pub fn char_loc(&self) -> usize {
-        self.0.tok_begin
+        self.0.begin()
     }
 
     pub fn ty(&self) -> TokenType {
@@ -53,32 +46,19 @@ impl Token {
 
     pub fn strip_information(self) -> Token {
         Token (
-            LocationData {
-                line_num: 1,
-                tok_begin: 0,
-                tok_end: 1
-            },
+            LocationData::new(0, 1),
             self.1
         )
+    }
+
+    pub fn location(&self) -> LocationData {
+        self.0.clone()
     }
 }
 
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} - {}", self.1, self.0)
-    }
-}
-
-#[derive(PartialEq, Debug, Clone, Hash, Eq)]
-struct LocationData {
-    line_num: usize,
-    tok_begin: usize,
-    tok_end: usize
-}
-
-impl Display for LocationData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Located at line {}, char {} ending {}", self.line_num, self.tok_begin, self.tok_end)
     }
 }
 

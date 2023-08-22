@@ -37,11 +37,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let tokens = lexer.lex()?;
 
     let mut line = 1;
-    for token in tokens {
-        if token.line_num() != line {
-            writeln!(&mut out_file)?;
-            line = token.line_num();
-        }
+    for token in tokens.output() {
+        // TODO: fixme
+        // if token.line_num() != line {
+        //     writeln!(&mut out_file)?;
+        //     line = token.line_num();
+        // }
 
         write!(&mut out_file, "{:?}, ", token)?;
     }

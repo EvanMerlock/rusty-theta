@@ -33,4 +33,8 @@ impl <T: Debug + PartialEq> Function<T> {
     pub fn strip_token_information(self) -> Function<T> {
         Function { args: self.args, chunk: self.chunk.strip_token_information(), name: self.name, return_ty: self.return_ty, information: self.information }
     }
+
+    pub fn map_information<V: Debug + PartialEq>(self, map_fn: &dyn Fn(T) -> V) -> Function<V> {
+        Function { args: self.args, chunk: self.chunk.map_information(map_fn), name: self.name, return_ty: self.return_ty, information: map_fn(self.information) }
+    }
 }

@@ -56,6 +56,13 @@ impl<'a> BasicParser<'a> {
         Ok(())
     }
 
+    fn prev_token(&self) -> Option<Token> {
+        match self.tokens.get(self.offset.wrapping_sub(1)) {
+            Some(tok) => Some(tok.clone()),
+            None => None
+        }
+    }
+
     fn advance(&mut self) -> Option<Token> {
         match self.tokens.get(self.offset) {
             Some(tok) => {
@@ -150,7 +157,7 @@ impl<'a> BasicParser<'a> {
     // https://doc.rust-lang.org/reference/items.html
     fn item(&mut self) -> Result<Item<ParseInfo>, ParseError> {
         trace!("read parser item");
-        if let Some(_func_tok) = self.match_token([TokenType::Fun]) {
+        if let Some(begin_func_tok) = self.match_token([TokenType::Fun]) {
             let func_name = self.consume_if(|ty| ty.is_ident(), "Expected function name")?;
             let func_name = Symbol::new(func_name)?;
             self.consume(TokenType::LeftParen, "Expected '(' after function name")?;
@@ -208,7 +215,7 @@ impl<'a> BasicParser<'a> {
             });
 
             // read block
-            self.consume(TokenType::LeftBrace, "no block before function")?;
+            let begin = self.consume(TokenType::LeftBrace, "no block before function")?;
             self.begin_scope();
 
             // insert function vars into table here for future usage
@@ -219,7 +226,7 @@ impl<'a> BasicParser<'a> {
                 self.symbol_tbl.borrow_mut().insert_symbol(arg.name.clone(), SymbolData::LocalVariable { ty: arg.ty.clone(), scope_level: sd, slot });
             }
 
-            let block = self.block_expression()?;
+            let block = self.block_expression(begin)?;
             self.end_scope()?;
 
             let func = Function {
@@ -227,7 +234,7 @@ impl<'a> BasicParser<'a> {
                 chunk: AbstractTree::expression(block.clone(), block.information().clone()),
                 name: func_name,
                 return_ty: ret_ty,
-                information: ParseInfo { scope_depth: self.symbol_tbl.borrow().scope_depth(), current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone() },
+                information: ParseInfo { scope_depth: self.symbol_tbl.borrow().scope_depth(), current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone(), location_data: begin_func_tok.location().merge(block.information().location_data.clone()) },
             };
 
 
@@ -275,7 +282,7 @@ impl<'a> BasicParser<'a> {
             return Err(ParseError::from_other("Expected expression and variable type"));
         }
 
-        let ident = Symbol::new(name)?;
+        let ident = Symbol::new(name.clone())?;
         let ty_ident = Symbol::new(ty.expect("big issue; ty existed prev but not now"))?;
 
         let ty_info = match self.symbol_tbl.borrow().get_symbol_data(&ty_ident, self.symbol_tbl.borrow().scope_depth()) {
@@ -284,7 +291,7 @@ impl<'a> BasicParser<'a> {
             // assume forward declaration here. if the type continues to not be defined via ID, we will error on compilation.
             None => TypeInformation::NonLiteral(ty_ident.clone()),
         };
-        self.consume(TokenType::Semicolon, "Expected ';' after statement")?;
+        let end = self.consume(TokenType::Semicolon, "Expected ';' after statement")?;
 
         // TODO:
         // if double `let` we should fail here, since that isn't valid (yet)
@@ -310,64 +317,72 @@ impl<'a> BasicParser<'a> {
             }
         };
 
-        Ok(Statement::VarStatement { ident, init: init.expect("big issue; init existed prev but now now"), information: ParseInfo::new(scope_depth, self.symbol_tbl.clone(), self.frame_data.clone()) })
+        Ok(Statement::VarStatement { ident, init: init.expect("big issue; init existed prev but now now"), information: ParseInfo::new(scope_depth, self.symbol_tbl.clone(), self.frame_data.clone(), name.location().merge(end.location())) })
     }
 
     fn statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         trace!("read statement");
-        if let Some(_print_tok) = self.match_token([TokenType::Identifier(String::from("print"))]) {
-            self.print_statement()
+        if let Some(print_tok) = self.match_token([TokenType::Identifier(String::from("print"))]) {
+            self.print_statement(print_tok)
         } else {
             self.expression_statement()
         }
     }
 
-    fn print_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
+    fn print_statement(&mut self, begin: Token) -> Result<Statement<ParseInfo>, ParseError> {
         trace!("read print statement");
         self.consume(TokenType::LeftParen, "Expected ( before print statement")?;
         let expression = self.expression()?;
         self.consume(TokenType::RightParen, "Expected ) after print statement")?;
-        self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
-        Ok(Statement::PrintStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+        let end_tok = self.consume(TokenType::Semicolon, "Expected ';' after expression")?;
+        Ok(Statement::PrintStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), begin.location().merge(end_tok.location())) })
     }
 
     fn expression_statement(&mut self) -> Result<Statement<ParseInfo>, ParseError> {
         trace!("read expression statement");
         let expression = self.expression()?;
-        if let Some(_tok) = self.match_token([TokenType::Semicolon]) {
-            Ok(Statement::ExpressionStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+        if let Some(semi_tok) = self.match_token([TokenType::Semicolon]) {
+            let loc = expression.information().location_data.clone().merge(semi_tok.location());
+            Ok(Statement::ExpressionStatement { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc) })
         } else {
             trace!("read partial");
-            Ok(Statement::Partial { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+            let loc = expression.information().location_data.clone();
+            Ok(Statement::Partial { expression, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc) })
         }
     }
 
     fn expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         trace!("read expression");
 
-        if let Some(_if_tok) = self.match_token([TokenType::If]) {
-            self.if_expression()
-        } else if let Some(_while_tok) = self.match_token([TokenType::While]) {
-            self.while_expression()
-        } else if let Some(_block_ty) = self.match_token([TokenType::LeftBrace]) {
+        if let Some(if_tok) = self.match_token([TokenType::If]) {
+            self.if_expression(if_tok)
+        } else if let Some(while_tok) = self.match_token([TokenType::While]) {
+            self.while_expression(while_tok)
+        } else if let Some(block_ty) = self.match_token([TokenType::LeftBrace]) {
             // block
             self.begin_scope();
-            let bs = self.block_expression();
+            let bs = self.block_expression(block_ty);
             self.end_scope()?;
             bs
-        } else if let Some(_return_ty) = self.match_token([TokenType::Return]) {
+        } else if let Some(return_tok) = self.match_token([TokenType::Return]) {
             let ret_expr = if let Some(_semi_token) = self.match_token([TokenType::Semicolon]) {
                 None
             } else {
                 Some(Box::new(self.assignment()?))
             };
-            Ok(Expression::Return { ret: ret_expr, information: ParseInfo { scope_depth: self.symbol_tbl.borrow().scope_depth(), current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone() } })
+
+            let loc = return_tok.location().merge(match &ret_expr {
+                Some(expr) => expr.information().location_data.clone(),
+                None => self.prev_token().expect("no previous token").location()
+            });
+
+            Ok(Expression::Return { ret: ret_expr, information: ParseInfo { scope_depth: self.symbol_tbl.borrow().scope_depth(), current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone(), location_data: loc } })
         } else {
             self.assignment() 
         }
     }
 
-    fn block_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
+    fn block_expression(&mut self, begin: Token) -> Result<Expression<ParseInfo>, ParseError> {
         trace!("read block");
         let mut decls = Vec::new();
         while self.match_token([TokenType::RightBrace, TokenType::Eof]).is_none() {
@@ -382,16 +397,16 @@ impl<'a> BasicParser<'a> {
             if let Statement::Partial { expression: expr, information: _ } = &decl {
                 // partials can only occur at the end of a block expression.
                 self.consume(TokenType::RightBrace, "Expected '}' after block expression conclusion")?;
-                return Ok(Expression::BlockExpression { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()), final_expression: Some(Box::new(expr.clone())) });
+                return Ok(Expression::BlockExpression { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), begin.location().merge(self.prev_token().expect("no previous token").location())), final_expression: Some(Box::new(expr.clone())) });
             }
 
             decls.push(decl);
         }
 
-        Ok(Expression::BlockExpression { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()), final_expression: None })
+        Ok(Expression::BlockExpression { statements: decls, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), begin.location().merge(self.prev_token().expect("no previous token").location())), final_expression: None })
     }
 
-    fn if_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
+    fn if_expression(&mut self, begin: Token) -> Result<Expression<ParseInfo>, ParseError> {
         trace!("if expression");
 
         // consume the if expression
@@ -412,10 +427,15 @@ impl<'a> BasicParser<'a> {
             None
         };
 
-        Ok(Expression::If { check_expression: Box::new(check_expr), body: Box::new(body_expr), else_body: else_clause, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+        let loc = begin.location().merge(match &else_clause {
+            Some(els) => els.information().location_data.clone(),
+            None => body_expr.information().location_data.clone()
+        });
+
+        Ok(Expression::If { check_expression: Box::new(check_expr), body: Box::new(body_expr), else_body: else_clause, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc) })
     }
 
-    fn while_expression(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
+    fn while_expression(&mut self, begin: Token) -> Result<Expression<ParseInfo>, ParseError> {
         trace!("while expression");
         // consume the while expression
         let predicate = if let Some(_left_paren) = self.match_token([TokenType::LeftParen]) {
@@ -431,7 +451,9 @@ impl<'a> BasicParser<'a> {
 
         let body_expr = self.expression()?;
 
-        Ok(Expression::LoopExpression { predicate, body: Box::new(body_expr), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+        let loc = begin.location().merge(body_expr.information().location_data.clone());
+
+        Ok(Expression::LoopExpression { predicate, body: Box::new(body_expr), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc) })
 
     }
 
@@ -446,7 +468,8 @@ impl<'a> BasicParser<'a> {
             return match lhs {                
                 Expression::Literal { literal, information: _ } => {
                     if let TokenType::Identifier(s) = literal.ty() {
-                        Ok(Expression::Assignment { name: Symbol::from(s), value: Box::new(rhs), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+                        let loc = literal.location().merge(rhs.information().location_data.clone());
+                        Ok(Expression::Assignment { name: Symbol::from(s), value: Box::new(rhs), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc) })
                     } else {
                         Err(ParseError::from_token(eq, "Invalid assignment target"))
                     }
@@ -464,11 +487,12 @@ impl<'a> BasicParser<'a> {
 
         while let Some(oper) = self.match_token([TokenType::BangEqual, TokenType::EqualEqual]) {
             let rhs = self.comparison()?;
+            let loc = lhs.information().location_data.clone().merge(rhs.information().location_data.clone());
             lhs = Expression::Binary {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
-                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()),
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc),
             };
         };
         
@@ -481,11 +505,12 @@ impl<'a> BasicParser<'a> {
 
         while let Some(oper) = self.match_token([TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual]) {
             let rhs = self.term()?;
+            let loc = lhs.information().location_data.clone().merge(rhs.information().location_data.clone());
             lhs = Expression::Binary {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
-                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()),
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc),
             };
         }
 
@@ -498,11 +523,12 @@ impl<'a> BasicParser<'a> {
 
         while let Some(oper) = self.match_token([TokenType::Minus, TokenType::Plus]) {
             let rhs = self.factor()?;
+            let loc = lhs.information().location_data.clone().merge(rhs.information().location_data.clone());
             lhs = Expression::Binary {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
-                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()),
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc),
             };
         }
 
@@ -515,11 +541,12 @@ impl<'a> BasicParser<'a> {
 
         while let Some(oper) = self.match_token([TokenType::Star, TokenType::Slash]) {
             let rhs = self.unary()?;
+            let loc = lhs.information().location_data.clone().merge(rhs.information().location_data.clone());
             lhs = Expression::Binary {
                 left: Box::new(lhs),
                 operator: oper,
                 right: Box::new(rhs),
-                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone())
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc)
             };
         }
 
@@ -529,11 +556,13 @@ impl<'a> BasicParser<'a> {
     fn unary(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         trace!("read unary");
         if let Some(oper) = self.match_token([TokenType::Bang, TokenType::Minus]) {
-            self.unary().map(|rhs| Expression::Unary {
+            self.unary().map(|rhs| {
+                let loc = oper.location().merge(rhs.information().location_data.clone());
+                Expression::Unary {
                 operator: oper,
                 right: Box::new(rhs),
-                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone())
-            })
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), loc)
+            }})
         } else {
             self.call()
         }
@@ -550,10 +579,17 @@ impl<'a> BasicParser<'a> {
                 args.push(expr);
             }
     
+            let loc = lval.information().location_data.clone().merge(self.prev_token().expect("no previous token").location());
+
             Ok(Expression::Call {
                 callee: Box::new(lval),
                 args,
-                information: ParseInfo { scope_depth: self.symbol_tbl.borrow().scope_depth(), current_symbol_table: self.symbol_tbl.clone(), frame_data: self.frame_data.clone() },
+                information: ParseInfo { 
+                    scope_depth: self.symbol_tbl.borrow().scope_depth(), 
+                    current_symbol_table: self.symbol_tbl.clone(), 
+                    frame_data: self.frame_data.clone(), 
+                    location_data: loc
+                },
             })
         } else {
             Ok(lval)
@@ -562,7 +598,7 @@ impl<'a> BasicParser<'a> {
 
     fn primary(&mut self) -> Result<Expression<ParseInfo>, ParseError> {
         trace!("read primary");
-        if self.match_token([TokenType::LeftParen]).is_some() {
+        if let Some(begin_token) = self.match_token([TokenType::LeftParen]) {
             trace!("read seq");
             let mut seq_expressions = vec![];
             let mut inner = self.expression()?;
@@ -574,18 +610,18 @@ impl<'a> BasicParser<'a> {
                 seq_expressions.push(inner);
             };
 
-            self.consume(TokenType::RightParen, "Expected ')' after expression.")?;
+            let end_token = self.consume(TokenType::RightParen, "Expected ')' after expression.")?;
             
             Ok(Expression::Sequence {
                 seq: seq_expressions,
-                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()),
+                information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), begin_token.location().merge(end_token.location())),
             })
         } else {
             // needs to match literals only
             self
                 .advance()
                 .filter(|tk| tk.ty().is_literal())
-                .map(|tk| Expression::Literal { literal: tk, information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone()) })
+                .map(|tk| Expression::Literal { literal: tk.clone(), information: ParseInfo::new(self.symbol_tbl.borrow().scope_depth(), self.symbol_tbl.clone(), self.frame_data.clone(), tk.location()) })
                 .ok_or_else(|| ParseError::from_other("Unexpected EOS"))
         }
     }

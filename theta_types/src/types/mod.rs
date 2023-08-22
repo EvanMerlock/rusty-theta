@@ -26,3 +26,33 @@ impl Display for TypeInformation {
         }
     }
 }
+
+#[derive(PartialEq, Debug, Clone, Hash, Eq)]
+pub struct LocationData {
+    begin: usize,
+    end: usize
+}
+
+impl LocationData {
+    pub const fn new(begin: usize, end: usize) -> LocationData {
+        LocationData { begin, end }
+    }
+
+    pub fn begin(&self) -> usize {
+        self.begin
+    }
+
+    pub fn end(&self) -> usize {
+        self.end
+    }
+
+    pub fn merge(self, other: LocationData) -> LocationData {
+        LocationData { begin: self.begin, end: other.end }
+    }
+}
+
+impl Display for LocationData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Located at char {} ending {}", self.begin, self.end)
+    }
+}
