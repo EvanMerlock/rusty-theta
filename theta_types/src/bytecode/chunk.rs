@@ -1,16 +1,19 @@
+use std::collections::HashMap;
+
 use super::{OpCode, ThetaConstant};
 
 pub const CHUNK_HEADER: [u8; 8] = [84, 104, 101, 67, 104, 117, 110, 107];
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
+    line_map: HashMap<usize, usize>,
     instructions: Vec<OpCode>,
     constants: Vec<ThetaConstant>,
 }
 
 impl Chunk {
     pub fn new() -> Chunk {
-        Chunk { instructions: Vec::new(), constants: Vec::new() }
+        Chunk { line_map: HashMap::new(), instructions: Vec::new(), constants: Vec::new() }
     }
 
     /// Derives the size of the individual instructions inside the chunk.
@@ -43,7 +46,7 @@ impl Chunk {
     pub fn relocate(self, offset: usize) -> Chunk {
         let inst = self.instructions.into_iter().map(|x| x.relocate_constants(offset)).collect();
 
-        Chunk { instructions: inst, constants: self.constants }
+        Chunk { line_map: self.line_map, instructions: inst, constants: self.constants }
     }
 
     pub fn merge_chunk(self, other: Chunk) -> Chunk {
